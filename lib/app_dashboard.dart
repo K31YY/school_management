@@ -116,7 +116,7 @@ class AppDashboardState extends State<AppDashboard> {
                           padding: const EdgeInsets.all(16.0),
                           child: Column(
                             children: <Widget>[
-                               Text('Students', style: TextStyle(fontSize: 20)),
+                              Text('Teachers', style: TextStyle(fontSize: 20)),
                               Icon(
                                 Icons.people,
                                 size: 40,
@@ -138,7 +138,7 @@ class AppDashboardState extends State<AppDashboard> {
                           padding: const EdgeInsets.all(16.0),
                           child: Column(
                             children: <Widget>[
-                               Text('Teachers', style: TextStyle(fontSize: 20)),
+                              Text('Students', style: TextStyle(fontSize: 20)),
                               Icon(
                                 Icons.people,
                                 size: 40,
@@ -160,4 +160,3 @@ class AppDashboardState extends State<AppDashboard> {
     );
   }
 }
-
