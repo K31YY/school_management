@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
-class FavoriteItems extends StatelessWidget {
-  const FavoriteItems({super.key});
+class Subject extends StatelessWidget {
+  const Subject({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Favorite Items'),),
+      appBar: AppBar(title: const Text('Subject')),
       body: ListView(),
     );
   }
