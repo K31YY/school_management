@@ -2,14 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:ungthoung_app/menu/navigation_menu.dart';
 import 'package:ungthoung_app/menu/views_teacher.dart';
 import 'package:ungthoung_app/students/add_student.dart';
-import 'package:ungthoung_app/students/student_dashboard.dart';
 
 void main() {
-  runApp(const AppDashboard());
+  runApp(const StudentDashboard());
 }
 
-class AppDashboard extends StatelessWidget {
-  const AppDashboard({super.key});
+class StudentDashboard extends StatelessWidget {
+  const StudentDashboard({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -177,7 +176,7 @@ class HomeScreen extends StatelessWidget {
             children: [
               Expanded(
                 child: _buildInfoCard(
-                  'Teachers',
+                  'Students',
                   '10',
                   Icons.groups,
                   const Color(0xFFE3E6FD),
@@ -187,8 +186,8 @@ class HomeScreen extends StatelessWidget {
               const SizedBox(width: 20),
               Expanded(
                 child: _buildInfoCard(
-                  'Students',
-                  '100',
+                  'Status',
+                  'Active',
                   Icons.school,
                   const Color(0xFFE3E6FD),
                   const Color(0xFF4A5BF6),
@@ -226,9 +225,7 @@ class HomeScreen extends StatelessWidget {
                 onTap: () => {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                      builder: (context) => const StudentDashboard(),
-                    ),
+                    MaterialPageRoute(builder: (context) => const AddStudent()),
                   ),
                 },
               ),

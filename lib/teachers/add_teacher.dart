@@ -49,9 +49,19 @@ class _AddTeacherState extends State<AddTeacher> with TickerProviderStateMixin {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Register Teacher'),
+        title: const Text(
+          'Register Teacher',
+          style: TextStyle(color: Colors.white),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white), // Back arrow
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+        ),
         centerTitle: true,
         elevation: 0,
+        backgroundColor: Colors.blue,
       ),
       body: SingleChildScrollView(
         child: Padding(

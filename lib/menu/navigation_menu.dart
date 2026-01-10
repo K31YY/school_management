@@ -1,219 +1,189 @@
 import 'package:flutter/material.dart';
-import 'package:ungthoung_app/login_user.dart';
-import 'package:ungthoung_app/menu/add_student.dart';
-import 'package:ungthoung_app/menu/teacher/add_teacher.dart';
-import 'package:ungthoung_app/menu/assign_schedule.dart';
-import 'package:ungthoung_app/menu/change_password.dart';
-import 'package:ungthoung_app/menu/report_area.dart';
-import 'package:ungthoung_app/student_list.dart';
-import 'package:ungthoung_app/teacher_list.dart';
+import 'package:ungthoung_app/teachers/add_teacher.dart';
+import 'package:ungthoung_app/menu/views_teacher.dart';
 
-class NavigationMenu extends StatelessWidget {
-  const NavigationMenu({super.key});
+// Widget សម្រាប់ Drawer ទាំងមូល
+class NavigetionMenu extends StatelessWidget {
+  const NavigetionMenu({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Drawer(
-      child: Padding(
-        padding: EdgeInsets.zero,
-        child: ListView(
-          children: <Widget>[
-            // Drawer Header
-            Container(
-              height: 180, // Adjust height as needed
-              width: double.infinity,
-              child: Center(
-                child: Image.asset(
-                  'assets/images/logo.png',
-                  width: 300, // Make it bigger
-                  height: 300,
-                  fit: BoxFit.contain,
-                ),
-              ),
-            ),
-            IntrinsicHeight(
-              child: Row(
-                children: const <Widget>[
-                  Padding(
-                    padding: EdgeInsets.symmetric(
-                      vertical: 10.0,
-                      horizontal: 16.0,
-                    ),
-                    child: Text(
-                      'Teacher',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: Divider(
-                      color: Colors.black,
-                      thickness: 1,
-                      // indent: 5,
-                      // endIndent: 16,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Teacher Section
-            _buildMenuItem(
-              'View Teacher',
-              Icons.list,
-              () => _navigateTo(context, TeacherList()),
-            ),
-            _buildMenuItem(
-              'Add Teacher',
-              Icons.person_add,
-              () => _navigateTo(context, AddTeacher()),
-            ),
-            _buildMenuItem(
-              'Assign Schedule',
-              Icons.edit_note,
-              () => _navigateTo(context, AssignSchedule()),
-            ),
-
-            // Students Section
-            IntrinsicHeight(
-              child: Row(
-                children: const <Widget>[
-                  Padding(
-                    padding: EdgeInsets.symmetric(
-                      vertical: 10.0,
-                      horizontal: 16.0,
-                    ),
-                    child: Text(
-                      'Student',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: Divider(
-                      color: Colors.black,
-                      thickness: 1,
-                      indent: 16,
-                      endIndent: 16,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            _buildMenuItem(
-              'View Student',
-              Icons.list,
-              () => _navigateTo(context, StudentList()),
-            ),
-            _buildMenuItem(
-              'Add Student',
-              Icons.person_add,
-              () => _navigateTo(context, AddStudent()),
-            ),
-
-            // Setting Section
-            IntrinsicHeight(
-              child: Row(
-                children: const <Widget>[
-                  Padding(
-                    padding: EdgeInsets.symmetric(
-                      vertical: 10.0,
-                      horizontal: 16.0,
-                    ),
-                    child: Text(
-                      'Setting',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: Divider(
-                      color: Colors.black,
-                      thickness: 1,
-                      indent: 16,
-                      endIndent: 16,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            _buildMenuItem(
-              'Report Area',
-              Icons.area_chart,
-              () => _navigateTo(context, ReportArea()),
-            ),
-            _buildMenuItem(
-              'Change Password',
-              Icons.lock,
-              () => _navigateTo(context, ChangePassword()),
-            ),
-
-            Spacer(), // Pushes logout to bottom
-
-            Divider(),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              child: ListTile(
-                leading: Icon(Icons.exit_to_app, color: Colors.red),
-                title: Text('Logout', style: TextStyle(color: Colors.red)),
-                onTap: () {
-                  Navigator.pop(context);
-                  // Add logout logic
-                  _showLogoutDialog(context);
-                },
-              ),
-            ),
-          ],
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.only(
+          topRight: Radius.circular(30),
+          bottomRight: Radius.circular(30),
         ),
+      ),
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          _buildDrawerHeader(),
+          // Section: Teacher
+          IntrinsicHeight(
+            child: Row(
+              children: <Widget>[
+                Padding(
+                  padding: EdgeInsetsGeometry.symmetric(
+                    vertical: 10,
+                    horizontal: 16,
+                  ),
+                  child: Text(
+                    'Teacher',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                ),
+                Expanded(
+                  child: Divider(
+                    color: Colors.black,
+                    thickness: 1,
+                    // indent: 5,
+                    // endIndent: 16,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          _buildMenuItem(
+            Icons.view_list_outlined,
+            () => _NavigateTo(context, ViewsTeacher()),
+            title: 'Views Teacher',
+          ),
+          _buildMenuItem(
+            Icons.person_add_outlined,
+            () => _NavigateTo(context, AddTeacher()),
+            title: 'Add Teacher',
+          ),
+          _buildMenuItem(Icons.calendar_today_outlined, 'Assign Schedule'),
+
+          // Section: Students
+          IntrinsicHeight(
+            child: Row(
+              children: <Widget>[
+                Padding(
+                  padding: EdgeInsetsGeometry.symmetric(
+                    vertical: 10,
+                    horizontal: 16,
+                  ),
+                  child: Text(
+                    'Students',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                ),
+                Expanded(
+                  child: Divider(
+                    color: Colors.black,
+                    thickness: 1,
+                    // indent: 5,
+                    // endIndent: 16,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          _buildMenuItem(Icons.view_list_outlined, 'Views Student'),
+          _buildMenuItem(Icons.group_add_outlined, 'Add Student'),
+
+          // Section: Setting
+          IntrinsicHeight(
+            child: Row(
+              children: <Widget>[
+                Padding(
+                  padding: EdgeInsetsGeometry.symmetric(
+                    vertical: 10,
+                    horizontal: 16,
+                  ),
+                  child: Text(
+                    'Setting',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                ),
+                Expanded(
+                  child: Divider(
+                    color: Colors.black,
+                    thickness: 1,
+                    // indent: 5,
+                    // endIndent: 16,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          _buildMenuItem(Icons.bar_chart_outlined, 'Report Area'),
+          _buildMenuItem(Icons.lock_outline, 'Change Password'),
+          _buildMenuItem(Icons.logout, 'Logout', color: Colors.red),
+        ],
       ),
     );
   }
 
-  Widget _buildMenuItem(String title, IconData icon, VoidCallback onTap) {
-    return ListTile(
-      leading: Icon(icon, size: 22),
-      title: Text(title, style: TextStyle(fontSize: 16)),
-      contentPadding: EdgeInsets.only(left: 20, right: 20),
-      minLeadingWidth: 0,
-      onTap: onTap,
-    );
-  }
-
-  void _navigateTo(BuildContext context, Widget page) {
-    Navigator.pop(context);
-    Navigator.push(context, MaterialPageRoute(builder: (context) => page));
-  }
-
-  void _showLogoutDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Logout'),
-        content: Text('Are you sure you want to logout?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancel'),
+  Widget _buildDrawerHeader() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 60, 20, 30),
+      child: Column(
+        children: [
+          CircleAvatar(
+            radius: 45,
+            backgroundColor: Colors.grey.shade200,
+            child: const Icon(Icons.school, size: 50, color: Colors.grey),
           ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              // Perform logout and navigate to login page
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => LoginUser()),
-              );
-            },
-            child: Text('Logout', style: TextStyle(color: Colors.red)),
+          const SizedBox(height: 16),
+          const Text(
+            'UNG THOUNG',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF003366),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'BUDDHIST HIGH SCHOOL',
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20.0, 20.0, 20.0, 10.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+          const SizedBox(height: 8),
+          Divider(height: 1, color: Colors.grey.shade300),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMenuItem(
+    IconData icon,
+    dynamic titleOrCallback, {
+    String? title,
+    Color color = Colors.black87,
+  }) {
+    String displayTitle =
+        title ?? (titleOrCallback is String ? titleOrCallback : '');
+    VoidCallback onTapCallback = titleOrCallback is VoidCallback
+        ? titleOrCallback as VoidCallback
+        : () {};
+
+    return ListTile(
+      leading: Icon(icon, color: color),
+      title: Text(displayTitle, style: TextStyle(color: color, fontSize: 15)),
+      onTap: onTapCallback,
+    );
+  }
+
+  void _NavigateTo(BuildContext context, Widget page) {
+    Navigator.pop(context);
+    Navigator.push(context, MaterialPageRoute(builder: (context) => page));
   }
 }
