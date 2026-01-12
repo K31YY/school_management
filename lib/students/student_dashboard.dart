@@ -175,7 +175,7 @@ class HomeScreen extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: _buildInfoCard(
+                child: _buildInfoCard1(
                   'Students',
                   '10',
                   Icons.groups,
@@ -185,10 +185,10 @@ class HomeScreen extends StatelessWidget {
               ),
               const SizedBox(width: 20),
               Expanded(
-                child: _buildInfoCard(
+                child: _buildInfoCard2(
                   'Status',
                   'Active',
-                  Icons.school,
+                  Icons.bar_chart,
                   const Color(0xFFE3E6FD),
                   const Color(0xFF4A5BF6),
                 ),
@@ -204,8 +204,8 @@ class HomeScreen extends StatelessWidget {
             mainAxisSpacing: 15,
             children: [
               _buildGridItem(
-                'Teacher\nLists',
-                Icons.cast_for_education,
+                'My Results',
+                Icons.assignment_ind_outlined,
                 const Color(0xFFD4F8E6),
                 const Color(0xFF34C759),
                 onTap: () {
@@ -218,8 +218,8 @@ class HomeScreen extends StatelessWidget {
                 },
               ),
               _buildGridItem(
-                'Student\nLists',
-                Icons.people_alt,
+                'My Times',
+                Icons.schedule_outlined,
                 const Color(0xFFE3E6FD),
                 const Color(0xFF4A5BF6),
                 onTap: () => {
@@ -230,26 +230,26 @@ class HomeScreen extends StatelessWidget {
                 },
               ),
               _buildGridItem(
-                'Subjects',
-                Icons.book,
+                'My\nAttandance',
+                Icons.calendar_month,
                 const Color(0xFFFEF4DB),
                 const Color(0xFFFF9500),
               ),
               _buildGridItem(
-                'Class',
-                Icons.meeting_room,
+                'Request\nAbsent',
+                Icons.edit_note,
                 const Color(0xFFE6DFFB),
                 const Color(0xFF9059FF),
               ),
               _buildGridItem(
-                'Reporting',
-                Icons.bar_chart,
+                'Change\nPassword',
+                Icons.lock_reset,
                 const Color(0xFFD9EEFD),
                 const Color(0xFF5AC8FA),
               ),
               _buildGridItem(
-                'Schedule',
-                Icons.calendar_today,
+                'Logout',
+                Icons.logout,
                 const Color(0xFFFEDDE4),
                 const Color(0xFFFF3B30),
               ),
@@ -260,7 +260,7 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoCard(
+  Widget _buildInfoCard1(
     String title,
     String count,
     IconData icon,
@@ -270,7 +270,7 @@ class HomeScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Color(0xFFFF6B6B),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
@@ -288,14 +288,76 @@ class HomeScreen extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: const TextStyle(color: Colors.grey, fontSize: 14),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
                 count,
                 style: const TextStyle(
-                  color: Colors.black,
-                  fontSize: 24,
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: iconColor, size: 24),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoCard2(
+    String title,
+    String count,
+    IconData icon,
+    Color bgColor,
+    Color iconColor,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Color(0xFF4CFF50),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            spreadRadius: 1,
+            blurRadius: 10,
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                count,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
                   fontWeight: FontWeight.bold,
                 ),
               ),
