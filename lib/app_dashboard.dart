@@ -1,15 +1,35 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ungthoung_app/menu/navigation_menu.dart';
 import 'package:ungthoung_app/menu/views_teacher.dart';
-import 'package:ungthoung_app/students/add_student.dart';
 import 'package:ungthoung_app/students/student_dashboard.dart';
 
 void main() {
   runApp(const AppDashboard());
 }
 
-class AppDashboard extends StatelessWidget {
+class AppDashboard extends StatefulWidget {
   const AppDashboard({super.key});
+
+  @override
+  State<AppDashboard> createState() => _AppDashboardState();
+}
+
+class _AppDashboardState extends State<AppDashboard> {
+  String? fullname;
+
+  @override
+  void initState() {
+    super.initState();
+    loadData();
+  }
+
+  Future<void> loadData() async {
+    final sp = await SharedPreferences.getInstance();
+    setState(() {
+      fullname = sp.getString("FULLNAME");
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -126,7 +146,7 @@ class HomeScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(20.0),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
+                    color: const Color.fromRGBO(0, 0, 0, 0.1),
                     spreadRadius: 1,
                     blurRadius: 10,
                     offset: const Offset(0, 5),
@@ -145,7 +165,7 @@ class HomeScreen extends StatelessWidget {
                         ),
                         SizedBox(height: 4),
                         Text(
-                          'BBU 212SS',
+                          'x',
                           style: TextStyle(
                             color: Colors.black,
                             fontSize: 22,
@@ -276,8 +296,8 @@ class HomeScreen extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+          const BoxShadow(
+            color: Color.fromRGBO(0, 0, 0, 0.05),
             spreadRadius: 1,
             blurRadius: 10,
           ),

@@ -1,10 +1,62 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ungthoung_app/teachers/add_teacher.dart';
 import 'package:ungthoung_app/menu/views_teacher.dart';
 
-// Widget សម្រាប់ Drawer ទាំងមូល
-class NavigetionMenu extends StatelessWidget {
+class NavigetionMenu extends StatefulWidget {
   const NavigetionMenu({super.key});
+
+  @override
+  State<NavigetionMenu> createState() => _NavigetionMenuState();
+}
+
+class _NavigetionMenuState extends State<NavigetionMenu> {
+  String? fullname;
+  String? email;
+  Future<void> _logOut() async {
+    final sp = await SharedPreferences.getInstance();
+    await sp.clear();
+    await FirebaseAuth.instance.signOut();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    loadData();
+  }
+
+  Future<void> loadData() async {
+    final sp = await SharedPreferences.getInstance();
+    setState(() {
+      fullname = sp.getString("FULLNAME");
+      email = sp.getString("EMAIL");
+    });
+  }
+
+  Future<void> _confirmLogout(BuildContext context) async {
+    Navigator.pop(context);
+    final isLogiut = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext dialogContext) => AlertDialog(
+        title: Center(child: const Text('Confirm Logout')),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Logout', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (isLogiut == true) {
+      _logOut();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,16 +97,22 @@ class NavigetionMenu extends StatelessWidget {
             ),
           ),
           _buildMenuItem(
+            context,
             Icons.view_list_outlined,
             () => _NavigateTo(context, ViewsTeacher()),
             title: 'Views Teacher',
           ),
           _buildMenuItem(
+            context,
             Icons.person_add_outlined,
             () => _NavigateTo(context, AddTeacher()),
             title: 'Add Teacher',
           ),
-          _buildMenuItem(Icons.calendar_today_outlined, 'Assign Schedule'),
+          _buildMenuItem(
+            context,
+            Icons.calendar_today_outlined,
+            'Assign Schedule',
+          ),
 
           // Section: Students
           IntrinsicHeight(
@@ -81,8 +139,8 @@ class NavigetionMenu extends StatelessWidget {
               ],
             ),
           ),
-          _buildMenuItem(Icons.view_list_outlined, 'Views Student'),
-          _buildMenuItem(Icons.group_add_outlined, 'Add Student'),
+          _buildMenuItem(context, Icons.view_list_outlined, 'Views Student'),
+          _buildMenuItem(context, Icons.group_add_outlined, 'Add Student'),
 
           // Section: Setting
           IntrinsicHeight(
@@ -109,9 +167,9 @@ class NavigetionMenu extends StatelessWidget {
               ],
             ),
           ),
-          _buildMenuItem(Icons.bar_chart_outlined, 'Report Area'),
-          _buildMenuItem(Icons.lock_outline, 'Change Password'),
-          _buildMenuItem(Icons.logout, 'Logout', color: Colors.red),
+          _buildMenuItem(context, Icons.bar_chart_outlined, 'Report Area'),
+          _buildMenuItem(context, Icons.lock_outline, 'Change Password'),
+          _buildMenuItem(context, Icons.logout, 'Logout', color: Colors.red),
         ],
       ),
     );
@@ -146,24 +204,8 @@ class NavigetionMenu extends StatelessWidget {
     );
   }
 
-  Widget _buildSectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20.0, 20.0, 20.0, 10.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-          ),
-          const SizedBox(height: 8),
-          Divider(height: 1, color: Colors.grey.shade300),
-        ],
-      ),
-    );
-  }
-
   Widget _buildMenuItem(
+    BuildContext context,
     IconData icon,
     dynamic titleOrCallback, {
     String? title,
@@ -172,13 +214,17 @@ class NavigetionMenu extends StatelessWidget {
     String displayTitle =
         title ?? (titleOrCallback is String ? titleOrCallback : '');
     VoidCallback onTapCallback = titleOrCallback is VoidCallback
-        ? titleOrCallback as VoidCallback
-        : () {};
+        ? titleOrCallback
+        : () {
+            _confirmLogout(context);
+          };
 
-    return ListTile(
-      leading: Icon(icon, color: color),
-      title: Text(displayTitle, style: TextStyle(color: color, fontSize: 15)),
-      onTap: onTapCallback,
+    return Center(
+      child: ListTile(
+        leading: Icon(icon, color: color),
+        title: Text(displayTitle, style: TextStyle(color: color, fontSize: 15)),
+        onTap: onTapCallback,
+      ),
     );
   }
 
