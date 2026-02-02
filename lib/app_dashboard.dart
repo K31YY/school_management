@@ -1,63 +1,96 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:ungthoung_app/menu/navigation_menu.dart';
+import 'package:ungthoung_app/menu/views_student.dart';
 import 'package:ungthoung_app/menu/views_teacher.dart';
+import 'package:ungthoung_app/notification_screen.dart';
 import 'package:ungthoung_app/students/student_dashboard.dart';
+import 'package:ungthoung_app/teachers/teacher_dashboard.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  // កុំភ្លេចដាក់ Firebase.initializeApp() ប្រសិនបើអ្នកប្រើ Firebase ក្នុង main
   runApp(const AppDashboard());
 }
 
-class AppDashboard extends StatefulWidget {
+class AppDashboard extends StatelessWidget {
   const AppDashboard({super.key});
-
-  @override
-  State<AppDashboard> createState() => _AppDashboardState();
-}
-
-class _AppDashboardState extends State<AppDashboard> {
-  String? fullname;
-
-  @override
-  void initState() {
-    super.initState();
-    loadData();
-  }
-
-  Future<void> loadData() async {
-    final sp = await SharedPreferences.getInstance();
-    setState(() {
-      fullname = sp.getString("FULLNAME");
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'SchoolApp',
       theme: ThemeData(primarySwatch: Colors.blue, fontFamily: 'KantumruyPro'),
-      home: HomeScreen(),
+      home: const HomeScreen(),
       debugShowCheckedModeBanner: false,
     );
   }
 }
 
-class HomeScreen extends StatelessWidget {
-  HomeScreen({super.key});
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  Future<Map<String, dynamic>?> _getUserData() async {
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      DocumentSnapshot doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      return doc.data() as Map<String, dynamic>?;
+    }
+    return null;
+  }
+
+  String getGreeting() {
+    int hour = DateTime.now().hour;
+    if (hour >= 12 && hour < 17) return 'Good Afternoon!';
+    if (hour >= 17 && hour <= 24) return 'Good Evening!';
+    return 'Good Morning!';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: const Color(0xFFF4F6F8),
       drawer: const NavigetionMenu(),
-      body: SingleChildScrollView(
-        child: Column(children: [_buildHeader(context), _buildBody(context)]),
+      body: FutureBuilder<Map<String, dynamic>?>(
+        future: _getUserData(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          String name = snapshot.data?['fullname'] ?? "Guest User";
+          String welcomeMessage = getGreeting();
+
+          return SingleChildScrollView(
+            child: Column(
+              children: [
+                _buildHeader(context, name, welcomeMessage),
+                _buildBody(context),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(
+    BuildContext context,
+    String displayName,
+    String greetingText,
+  ) {
     return SizedBox(
       height: 220,
       child: Stack(
@@ -77,58 +110,40 @@ class HomeScreen extends StatelessWidget {
             child: SafeArea(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Column(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const SizedBox(height: 10),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        //const Icon(Icons.menu, color: Colors.white, size: 30),
-                        IconButton(
-                          icon: const Icon(
-                            Icons.menu,
-                            color: Colors.white,
-                            size: 30,
+                    IconButton(
+                      icon: const Icon(
+                        Icons.menu,
+                        color: Colors.white,
+                        size: 30,
+                      ),
+                      onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                    ),
+                    const Text(
+                      'Ung Thoung Buddhist\nHigh School',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(
+                        Icons.notifications,
+                        size: 28,
+                        color: Colors.white,
+                      ),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const NotificationScreen(),
                           ),
-                          onPressed: () {
-                            _scaffoldKey.currentState?.openDrawer();
-                          },
-                        ),
-                        const Text(
-                          'Ung Thoung Buddhist\nHight School',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Stack(
-                          children: [
-                            const Icon(
-                              Icons.notifications,
-                              color: Colors.white,
-                              size: 30,
-                            ),
-                            Positioned(
-                              right: 2,
-                              top: 2,
-                              child: Container(
-                                padding: const EdgeInsets.all(2),
-                                decoration: BoxDecoration(
-                                  color: Colors.red,
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-
-                                constraints: const BoxConstraints(
-                                  minWidth: 8,
-                                  minHeight: 8,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -144,29 +159,31 @@ class HomeScreen extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(20.0),
-                boxShadow: [
+                boxShadow: const [
                   BoxShadow(
-                    color: const Color.fromRGBO(0, 0, 0, 0.1),
-                    spreadRadius: 1,
+                    color: Colors.black12,
                     blurRadius: 10,
-                    offset: const Offset(0, 5),
+                    offset: Offset(0, 5),
                   ),
                 ],
               ),
               child: Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Good Evening',
-                          style: TextStyle(color: Colors.grey, fontSize: 16),
+                          greetingText, // លុប 'const' និង '()' ចេញ
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 16,
+                          ),
                         ),
-                        SizedBox(height: 4),
+                        const SizedBox(height: 4),
                         Text(
-                          'x',
-                          style: TextStyle(
+                          displayName,
+                          style: const TextStyle(
                             color: Colors.black,
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
@@ -175,9 +192,11 @@ class HomeScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-                  CircleAvatar(
+                  const CircleAvatar(
                     radius: 30,
-                    backgroundImage: AssetImage('assets/images/profile.jpg'),
+                    backgroundImage: NetworkImage(
+                      'https://via.placeholder.com/150',
+                    ),
                   ),
                 ],
               ),
@@ -188,9 +207,10 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+  // --- _buildBody, _buildInfoCard, _buildGridItem ទុកដូចដើម ---
   Widget _buildBody(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+      padding: const EdgeInsets.all(20.0),
       child: Column(
         children: [
           Row(
@@ -216,7 +236,7 @@ class HomeScreen extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 15),
           GridView.count(
             crossAxisCount: 3,
             shrinkWrap: true,
@@ -229,28 +249,12 @@ class HomeScreen extends StatelessWidget {
                 Icons.cast_for_education,
                 const Color(0xFFD4F8E6),
                 const Color(0xFF34C759),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const ViewsTeacher(),
-                    ),
-                  );
-                },
               ),
               _buildGridItem(
                 'Student\nLists',
                 Icons.people_alt,
                 const Color(0xFFE3E6FD),
                 const Color(0xFF4A5BF6),
-                onTap: () => {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const StudentDashboard(),
-                    ),
-                  ),
-                },
               ),
               _buildGridItem(
                 'Subjects',
@@ -295,12 +299,8 @@ class HomeScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          const BoxShadow(
-            color: Color.fromRGBO(0, 0, 0, 0.05),
-            spreadRadius: 1,
-            blurRadius: 10,
-          ),
+        boxShadow: const [
+          BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.05), blurRadius: 10),
         ],
       ),
       child: Row(
@@ -317,7 +317,6 @@ class HomeScreen extends StatelessWidget {
               Text(
                 count,
                 style: const TextStyle(
-                  color: Colors.black,
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
                 ),
@@ -341,24 +340,47 @@ class HomeScreen extends StatelessWidget {
     String label,
     IconData icon,
     Color bgColor,
-    Color iconColor, {
-    VoidCallback? onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              spreadRadius: 1,
-              blurRadius: 10,
-            ),
-          ],
-        ),
+    Color iconColor,
+  ) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
+        ],
+      ),
+      child: InkWell(
+        // ប្រើ InkWell ដើម្បីឱ្យមាន Effect ពេលចុច (Ripple Effect)
+        borderRadius: BorderRadius.circular(20),
+        onTap: () {
+          // កូដសម្រាប់ប្តូរទៅកាន់ Screen ផ្សេងៗ
+          if (label.contains('Teacher')) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const ViewsTeacher()),
+            );
+          } else if (label.contains('Student')) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const ViewsStudent()),
+            );
+          } else if (label == 'Subjects') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const DashboardScreen()),
+            );
+          } else if (label == 'Class') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const StudentDashboard()),
+            );
+          } else if (label == 'Reporting') {
+            // ប្តូរទៅកាន់ទំព័រ Reporting
+          } else if (label == 'Schedule') {
+            // ប្តូរទៅកាន់ទំព័រ Schedule
+          }
+        },
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -371,11 +393,7 @@ class HomeScreen extends StatelessWidget {
             Text(
               label,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: Colors.black87,
-              ),
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
             ),
           ],
         ),

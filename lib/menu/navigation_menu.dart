@@ -1,7 +1,12 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:ungthoung_app/teachers/add_teacher.dart';
+import 'package:ungthoung_app/menu/assign_schedule.dart';
+import 'package:ungthoung_app/menu/change_password.dart';
+import 'package:ungthoung_app/menu/report_area.dart';
+import 'package:ungthoung_app/menu/views_student.dart';
+import 'package:ungthoung_app/students/add_student.dart';
+import 'package:ungthoung_app/menu/add_teacher.dart';
 import 'package:ungthoung_app/menu/views_teacher.dart';
 
 class NavigetionMenu extends StatefulWidget {
@@ -111,7 +116,8 @@ class _NavigetionMenuState extends State<NavigetionMenu> {
           _buildMenuItem(
             context,
             Icons.calendar_today_outlined,
-            'Assign Schedule',
+            () => _NavigateTo(context, AssignSchedule()),
+            title: 'Assign Schedule',
           ),
 
           // Section: Students
@@ -139,8 +145,18 @@ class _NavigetionMenuState extends State<NavigetionMenu> {
               ],
             ),
           ),
-          _buildMenuItem(context, Icons.view_list_outlined, 'Views Student'),
-          _buildMenuItem(context, Icons.group_add_outlined, 'Add Student'),
+          _buildMenuItem(
+            context,
+            Icons.view_list_outlined,
+            () => _NavigateTo(context, ViewsStudent()),
+            title: 'Views Student',
+          ),
+          _buildMenuItem(
+            context,
+            Icons.group_add_outlined,
+            () => _NavigateTo(context, AddStudent()),
+            title: 'Add Student',
+          ),
 
           // Section: Setting
           IntrinsicHeight(
@@ -167,8 +183,18 @@ class _NavigetionMenuState extends State<NavigetionMenu> {
               ],
             ),
           ),
-          _buildMenuItem(context, Icons.bar_chart_outlined, 'Report Area'),
-          _buildMenuItem(context, Icons.lock_outline, 'Change Password'),
+          _buildMenuItem(
+            context,
+            Icons.bar_chart_outlined,
+            () => _NavigateTo(context, ReportingScreen()),
+            title: 'Report Area',
+          ),
+          _buildMenuItem(
+            context,
+            Icons.lock_outline,
+            () => _NavigateTo(context, ChangePasswordScreen()),
+            title: 'Change Password',
+          ),
           _buildMenuItem(context, Icons.logout, 'Logout', color: Colors.red),
         ],
       ),

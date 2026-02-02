@@ -2,14 +2,30 @@ import 'package:flutter/material.dart';
 import 'package:ungthoung_app/menu/navigation_menu.dart';
 import 'package:ungthoung_app/menu/views_teacher.dart';
 import 'package:ungthoung_app/students/add_student.dart';
+import 'package:ungthoung_app/students/my_result.dart';
+import 'package:ungthoung_app/students/stu_absent.dart';
+import 'package:ungthoung_app/students/stu_attandance.dart';
+import 'package:ungthoung_app/students/stu_class.dart';
 
 void main() {
   runApp(const StudentDashboard());
 }
 
-class StudentDashboard extends StatelessWidget {
+class StudentDashboard extends StatefulWidget {
   const StudentDashboard({super.key});
 
+  String getGreeting() {
+    int hour = DateTime.now().hour;
+    if (hour >= 12 && hour < 17) return 'Good Afternoon!';
+    if (hour >= 17 && hour <= 24) return 'Good Evening!';
+    return 'Good Morning!';
+  }
+
+  @override
+  State<StudentDashboard> createState() => _StudentDashboardState();
+}
+
+class _StudentDashboardState extends State<StudentDashboard> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -212,7 +228,7 @@ class HomeScreen extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const ViewsTeacher(),
+                      builder: (context) => const MyProfileScreen(),
                     ),
                   );
                 },
@@ -225,7 +241,7 @@ class HomeScreen extends StatelessWidget {
                 onTap: () => {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const AddStudent()),
+                    MaterialPageRoute(builder: (context) => const StuClass()),
                   ),
                 },
               ),
@@ -234,12 +250,28 @@ class HomeScreen extends StatelessWidget {
                 Icons.calendar_month,
                 const Color(0xFFFEF4DB),
                 const Color(0xFFFF9500),
+                onTap: () => {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const MyAttendanceScreen(),
+                    ),
+                  ),
+                },
               ),
               _buildGridItem(
                 'Request\nAbsent',
                 Icons.edit_note,
                 const Color(0xFFE6DFFB),
                 const Color(0xFF9059FF),
+                onTap: () => {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const RequestForYouScreen(),
+                    ),
+                  ),
+                },
               ),
               _buildGridItem(
                 'Change\nPassword',

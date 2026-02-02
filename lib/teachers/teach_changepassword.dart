@@ -5,19 +5,19 @@ void main() {
   runApp(
     const MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: ChangePasswordScreen(),
+      home: TeachChangepassword(),
     ),
   );
 }
 
-class ChangePasswordScreen extends StatefulWidget {
-  const ChangePasswordScreen({super.key});
+class TeachChangepassword extends StatefulWidget {
+  const TeachChangepassword({super.key});
 
   @override
-  State<ChangePasswordScreen> createState() => _ChangePasswordScreenState();
+  State<TeachChangepassword> createState() => _TeachChangepasswordState();
 }
 
-class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
+class _TeachChangepasswordState extends State<TeachChangepassword> {
   // Colors
   final Color primaryBlue = const Color(0xFF0055FF);
   final Color backgroundGrey = const Color(0xFFF0F0F0);
