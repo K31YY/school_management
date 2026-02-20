@@ -10,7 +10,7 @@ class MyProfileScreen extends StatefulWidget {
 
 class _MyProfileScreenState extends State<MyProfileScreen> {
   // Colors
-  final Color primaryBlue = const Color(0xFF0055FF);
+  final Color primaryBlue = const Color(0xFF4A5BF6);
   final Color backgroundGrey = const Color(0xFFF0F0F0);
   final Color textDark = const Color(0xFF333333);
   final Color headerCyan = const Color(0xFF00C2FF);
@@ -90,10 +90,10 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
 
             // --- 2. Custom Tab Switcher (UPDATED) ---
             Container(
-              height: 45,
+              height: 30,
               decoration: BoxDecoration(
                 color: Colors.white, // Background of the container
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(15),
                 border: Border.all(
                   color: primaryBlue,
                 ), // Blue border around the whole toggle
@@ -111,7 +111,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                           color: isProfileTab
                               ? primaryBlue
                               : Colors.transparent,
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(15),
                         ),
                         child: Text(
                           "Profile",
@@ -135,7 +135,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                           color: !isProfileTab
                               ? primaryBlue
                               : Colors.transparent,
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(15),
                         ),
                         child: Text(
                           "Result",
@@ -175,14 +175,14 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
         Row(
           children: [
             Expanded(child: _buildInfoItem("Father's name", "LEE")),
-            Expanded(child: _buildInfoItem("Job", "Farmer")),
+            Expanded(child: _buildInfoItem("Job", "Software Engineer")),
           ],
         ),
 
         Row(
           children: [
             Expanded(child: _buildInfoItem("Mother's name", "MEE")),
-            Expanded(child: _buildInfoItem("Job", "Driver")),
+            Expanded(child: _buildInfoItem("Job", "Doctor")),
           ],
         ),
 
@@ -343,7 +343,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: primaryBlue.withOpacity(0.3)),
+        border: Border.all(color: primaryBlue),
       ),
       child: Row(
         children: [

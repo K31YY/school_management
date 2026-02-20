@@ -19,7 +19,7 @@ class TeachChangepassword extends StatefulWidget {
 
 class _TeachChangepasswordState extends State<TeachChangepassword> {
   // Colors
-  final Color primaryBlue = const Color(0xFF0055FF);
+  final Color primaryBlue = const Color(0xFF4A5BF6);
   final Color backgroundGrey = const Color(0xFFF0F0F0);
   final Color alertRed = const Color(
     0xFFFF4D4D,

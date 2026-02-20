@@ -19,7 +19,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // 1. Create a GlobalKey to control the Scaffold
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  final Color primaryBlue = const Color(0xFF0055FF);
+  final Color primaryBlue = const Color(0xFF4A5BF6);
   final Color backgroundGrey = const Color(0xFFF0F0F0);
   final Color salmonRed = const Color(0xFFFF6B6B);
   final Color brightGreen = const Color(0xFF2ECC71);
@@ -217,6 +217,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
+                          // ignore: deprecated_member_use
                           color: Colors.black.withOpacity(0.05),
                           blurRadius: 10,
                           offset: const Offset(0, 5),
@@ -404,7 +405,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   fontSize: 20,
                 ),
               ),
-              Icon(icon, color: Colors.white.withOpacity(0.8), size: 40),
+              Icon(icon, color: Colors.white, size: 40),
             ],
           ),
         ],

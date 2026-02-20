@@ -10,7 +10,7 @@ class MakeAttendanceScreen extends StatefulWidget {
 
 class _MakeAttendanceScreenState extends State<MakeAttendanceScreen> {
   // Colors
-  final Color primaryBlue = const Color(0xFF0055FF);
+  final Color primaryBlue = const Color(0xFF4A5BF6);
   final Color backgroundGrey = const Color(0xFFF0F0F0);
   final Color successGreen = const Color(0xFF00C853);
   final Color textDark = const Color(0xFF333333);

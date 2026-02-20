@@ -19,11 +19,11 @@ void configLoading() {
     ..loadingStyle = EasyLoadingStyle.custom
     ..indicatorSize = 45.0
     ..radius = 10.0
-    ..progressColor = Colors.yellow
-    ..backgroundColor = Colors.green
-    ..indicatorColor = Colors.yellow
-    ..textColor = Colors.yellow
-    ..maskColor = Colors.blue.withOpacity(0.5)
+    ..progressColor = AppColors.bgColor
+    ..backgroundColor = AppColors.bgColor
+    ..indicatorColor = Colors.white
+    ..textColor = Colors.white
+    ..maskColor = Colors.blue
     ..userInteractions = true
     ..dismissOnTap = false;
   // ..customAnimation = CustomAnimation();

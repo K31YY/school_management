@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 class AddStudent extends StatefulWidget {
   const AddStudent({super.key});
@@ -10,9 +8,9 @@ class AddStudent extends StatefulWidget {
 
 class _AddStudentState extends State<AddStudent> {
   // Colors
-  final Color _primaryBlue = const Color(0xFF0D61FF);
+  final Color _primaryBlue = Color(0xFF4A5BF6);
   final Color _bgGray = const Color(0xFFF0F0F0);
-  final Color _borderColor = const Color(0xFF0D61FF).withOpacity(0.5);
+  final Color _borderColor = const Color(0xFF0D61FF);
 
   // State
   int _selectedTabIndex = 0; // 0 = Personal Info, 1 = Parent Info

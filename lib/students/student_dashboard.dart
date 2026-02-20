@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:ungthoung_app/menu/navigation_menu.dart';
-import 'package:ungthoung_app/menu/views_teacher.dart';
-import 'package:ungthoung_app/students/add_student.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:ungthoung_app/menu/change_password.dart';
 import 'package:ungthoung_app/students/my_result.dart';
 import 'package:ungthoung_app/students/stu_absent.dart';
 import 'package:ungthoung_app/students/stu_attandance.dart';
 import 'package:ungthoung_app/students/stu_class.dart';
+import 'package:ungthoung_app/teachers/teacher.class.dart';
 
 void main() {
   runApp(const StudentDashboard());
@@ -45,7 +45,98 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: const Color(0xFFF4F6F8),
-      drawer: const NavigetionMenu(),
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            UserAccountsDrawerHeader(
+              decoration: const BoxDecoration(color: Color(0xFF4A5BF6)),
+              accountName: Text(
+                "Teacher Name",
+                style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+              ),
+              accountEmail: Text("Class Teacher", style: GoogleFonts.poppins()),
+              currentAccountPicture: const CircleAvatar(
+                backgroundColor: Colors.white,
+                child: Icon(Icons.person, color: Colors.black),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.groups),
+              title: Text("My Result", style: GoogleFonts.poppins()),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const MyProfileScreen(),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.assignment),
+              title: Text("My Times", style: GoogleFonts.poppins()),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const MyTimeClassroomScreen(),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.class_),
+              title: Text("My Attendance", style: GoogleFonts.poppins()),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const MyAttendanceScreen(),
+                  ),
+                );
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.score),
+              title: Text("Request Absent", style: GoogleFonts.poppins()),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const RequestForYouScreen(),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.repartition),
+              title: Text("Change Password", style: GoogleFonts.poppins()),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ChangePasswordScreen(),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.change_circle),
+              title: Text("Logout", style: GoogleFonts.poppins()),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const StudentDashboard(),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
       body: SingleChildScrollView(
         child: Column(children: [_buildHeader(context), _buildBody(context)]),
       ),
@@ -141,7 +232,8 @@ class HomeScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(20.0),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
+                    // ignore: deprecated_member_use
+                    color: Colors.black.withOpacity(0.05),
                     spreadRadius: 1,
                     blurRadius: 10,
                     offset: const Offset(0, 5),
@@ -278,12 +370,28 @@ class HomeScreen extends StatelessWidget {
                 Icons.lock_reset,
                 const Color(0xFFD9EEFD),
                 const Color(0xFF5AC8FA),
+                onTap: () => {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ChangePasswordScreen(),
+                    ),
+                  ),
+                },
               ),
               _buildGridItem(
                 'Logout',
                 Icons.logout,
                 const Color(0xFFFEDDE4),
                 const Color(0xFFFF3B30),
+                onTap: () => {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const StudentDashboard(),
+                    ),
+                  ),
+                },
               ),
             ],
           ),
@@ -306,6 +414,7 @@ class HomeScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
+            // ignore: deprecated_member_use
             color: Colors.black.withOpacity(0.05),
             spreadRadius: 1,
             blurRadius: 10,
@@ -364,6 +473,7 @@ class HomeScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
+            // ignore: deprecated_member_use
             color: Colors.black.withOpacity(0.05),
             spreadRadius: 1,
             blurRadius: 10,
@@ -424,6 +534,7 @@ class HomeScreen extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
+              // ignore: deprecated_member_use
               color: Colors.black.withOpacity(0.05),
               spreadRadius: 1,
               blurRadius: 10,

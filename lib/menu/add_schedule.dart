@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart'; // Optional, for styling
+import 'package:google_fonts/google_fonts.dart';
+//Optional, for styling
 
 void main() {
   runApp(
@@ -16,7 +17,7 @@ class AssignScreen extends StatefulWidget {
 
 class _AssignScreenState extends State<AssignScreen> {
   // Color Palette based on image
-  final Color primaryBlue = const Color(0xFF0055FF);
+  final Color primaryBlue = Color(0xFF4A5BF6); // Using color from AppColors
   final Color backgroundGrey = const Color(0xFFF0F0F0);
   final Color textDark = const Color(0xFF333333);
 

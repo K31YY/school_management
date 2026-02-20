@@ -37,7 +37,7 @@ dependencies:
   firebase_auth: ^4.16.0
   flutter_easyloading: ^3.0.5
   shared_preferences: ^2.5.4
-  image_picker: ^1.1.2
+  image_picker: ^1.2.1
   firebase_core: ^2.32.0
   cloud_firestore: ^4.17.5
   google_fonts: ^8.0.0

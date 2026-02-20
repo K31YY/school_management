@@ -12,7 +12,7 @@ class NotificationRequestScreen extends StatefulWidget {
 
 class _NotificationRequestScreenState extends State<NotificationRequestScreen> {
   // Colors
-  final Color primaryBlue = const Color(0xFF0055FF);
+  final Color primaryBlue = const Color(0xFF4A5BF6);
   final Color backgroundGrey = const Color(0xFFF0F0F0);
   final Color textDark = const Color(0xFF333333);
 
@@ -82,7 +82,7 @@ class _NotificationRequestScreenState extends State<NotificationRequestScreen> {
           Padding(
             padding: const EdgeInsets.all(20.0),
             child: Container(
-              height: 45,
+              height: 35,
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(25),

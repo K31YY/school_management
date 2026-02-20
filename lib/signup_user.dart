@@ -48,6 +48,7 @@ class _SignupUserState extends State<SignupUser> {
         'createdAt': DateTime.now(),
       });
       EasyLoading.showSuccess('Added user successfully');
+      // ignore: use_build_context_synchronously
       Navigator.pop(context);
       if (!mounted) return;
     } catch (ex) {

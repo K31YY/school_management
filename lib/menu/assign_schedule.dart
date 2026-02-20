@@ -14,7 +14,7 @@ class _AssignScheduleState extends State<AssignSchedule> {
   String selectedDay = "Mon";
   final List<String> days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-  static const Color _primaryBlue = Color(0xFF4455CC);
+  static const Color _primaryBlue = Color(0xFF0055FF);
   static const Color _textGray = Color(0xFF888888);
 
   @override
@@ -22,7 +22,7 @@ class _AssignScheduleState extends State<AssignSchedule> {
     return Scaffold(
       backgroundColor: const Color(0xFFFFFFFF),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF4455CC),
+        backgroundColor: const Color(0xFF4A5BF6),
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
@@ -154,7 +154,7 @@ class _AssignScheduleState extends State<AssignSchedule> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _primaryBlue.withOpacity(0.5), width: 1),
+        border: Border.all(color: _primaryBlue, width: 1),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(

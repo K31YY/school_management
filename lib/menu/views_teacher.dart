@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ungthoung_app/menu/add_teacher.dart';
 
 class ViewsTeacher extends StatefulWidget {
   const ViewsTeacher({super.key});
@@ -10,9 +11,9 @@ class ViewsTeacher extends StatefulWidget {
 class _ViewsTeacherState extends State<ViewsTeacher> {
   // Colors
   final Color _primaryBlue = const Color(0xFF0D61FF); // Matches the header blue
-  final Color _bgGray = const Color(0xFFF0F0F0);      // Light gray background
-  final Color _actionBlue = const Color(0xFF29B6F6);  // Lighter blue for buttons
-  
+  final Color _bgGray = const Color(0xFFF0F0F0); // Light gray background
+  final Color _actionBlue = const Color(0xFF29B6F6); // Lighter blue for buttons
+
   // Mock Data
   List<Map<String, dynamic>> teachers = [
     {
@@ -20,16 +21,8 @@ class _ViewsTeacherState extends State<ViewsTeacher> {
       "id": "Teacher ID",
       "isExpanded": true, // First one open by default
     },
-    {
-      "name": "Teacher Name",
-      "id": "Teacher ID",
-      "isExpanded": false,
-    },
-    {
-      "name": "Teacher Name",
-      "id": "Teacher ID",
-      "isExpanded": false,
-    },
+    {"name": "Teacher Name", "id": "Teacher ID", "isExpanded": false},
+    {"name": "Teacher Name", "id": "Teacher ID", "isExpanded": false},
   ];
 
   @override
@@ -54,7 +47,12 @@ class _ViewsTeacherState extends State<ViewsTeacher> {
           // The 'Add User' icon specific to this screen
           IconButton(
             icon: const Icon(Icons.person_add, color: Colors.white),
-            onPressed: () {},
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AddTeacher()),
+              );
+            },
           ),
         ],
       ),
@@ -78,14 +76,17 @@ class _ViewsTeacherState extends State<ViewsTeacher> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(30),
-                border: Border.all(color: _primaryBlue.withOpacity(0.3)),
+                border: Border.all(color: _primaryBlue),
               ),
               child: const TextField(
                 decoration: InputDecoration(
                   hintText: "Search",
                   hintStyle: TextStyle(color: Colors.grey, fontSize: 14),
                   border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 14,
+                  ),
                   suffixIcon: Icon(Icons.search, color: Colors.black54),
                 ),
               ),
@@ -117,7 +118,7 @@ class _ViewsTeacherState extends State<ViewsTeacher> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _primaryBlue.withOpacity(0.5)),
+        border: Border.all(color: _primaryBlue),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -130,7 +131,11 @@ class _ViewsTeacherState extends State<ViewsTeacher> {
               color: Colors.black87,
             ),
           ),
-          const Icon(Icons.keyboard_arrow_down, size: 20, color: Colors.black87)
+          const Icon(
+            Icons.keyboard_arrow_down,
+            size: 20,
+            color: Colors.black87,
+          ),
         ],
       ),
     );
@@ -150,7 +155,7 @@ class _ViewsTeacherState extends State<ViewsTeacher> {
             });
           },
           child: Container(
-            color: Colors.transparent, 
+            color: Colors.transparent,
             padding: const EdgeInsets.symmetric(vertical: 12),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
@@ -159,10 +164,10 @@ class _ViewsTeacherState extends State<ViewsTeacher> {
                 const CircleAvatar(
                   radius: 24,
                   backgroundColor: Color(0xFF009688), // Teal color from image
-                  child: Icon(Icons.person_4, color: Colors.white), 
+                  child: Icon(Icons.person_4, color: Colors.white),
                 ),
                 const SizedBox(width: 15),
-                
+
                 // Name & ID
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -186,9 +191,9 @@ class _ViewsTeacherState extends State<ViewsTeacher> {
                     ),
                   ],
                 ),
-                
+
                 const Spacer(),
-                
+
                 // Expand Icon
                 Icon(
                   isExpanded ? Icons.keyboard_arrow_down : Icons.chevron_left,
@@ -206,7 +211,9 @@ class _ViewsTeacherState extends State<ViewsTeacher> {
             child: Row(
               children: [
                 _buildActionButton("View Profile"),
-                const SizedBox(width: 15), // Wider gap since there are only 2 buttons
+                const SizedBox(
+                  width: 15,
+                ), // Wider gap since there are only 2 buttons
                 _buildActionButton("View Attendance"),
               ],
             ),

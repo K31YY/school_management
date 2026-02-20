@@ -1,13 +1,65 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-
-class AdvancedReportingScreen extends StatelessWidget {
+class AdvancedReportingScreen extends StatefulWidget {
   const AdvancedReportingScreen({super.key});
 
-  final Color primaryBlue = const Color(0xFF0055FF);
+  @override
+  State<AdvancedReportingScreen> createState() =>
+      _AdvancedReportingScreenState();
+}
+
+class _AdvancedReportingScreenState extends State<AdvancedReportingScreen> {
+  final Color primaryBlue = const Color(0xFF4A5BF6);
   final Color backgroundGrey = const Color(0xFFF0F0F0);
   final Color textDark = const Color(0xFF333333);
+
+  // State variables for dropdown selections
+  String? selectedClass;
+  String? selectedMonth;
+
+  // State variables for Date Selection
+  // Initialized to the date from your design (or use DateTime.now())
+  DateTime fromDate = DateTime(2025, 11, 29);
+  DateTime toDate = DateTime(2025, 11, 29);
+
+  // Function to show Date Picker
+  Future<void> _pickDate(BuildContext context, bool isFromDate) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: isFromDate ? fromDate : toDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2030),
+      builder: (context, child) {
+        // Optional: Customize color to match your app theme
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: primaryBlue,
+              onPrimary: Colors.white,
+              onSurface: textDark,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        if (isFromDate) {
+          fromDate = picked;
+        } else {
+          toDate = picked;
+        }
+      });
+    }
+  }
+
+  // Helper to format date manually as YYYY-MM-DD
+  String _formatDate(DateTime date) {
+    return "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -18,9 +70,7 @@ class AdvancedReportingScreen extends StatelessWidget {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            Navigator.pop(context);
-          },
+          onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           "Reporting",
@@ -36,11 +86,8 @@ class AdvancedReportingScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- SECTION 1: ATTENDANCE REPORT ---
             _buildSectionTitle("Attendance Report"),
             const SizedBox(height: 10),
-
-            // Date Inputs Container
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -49,24 +96,39 @@ class AdvancedReportingScreen extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  Expanded(child: _buildDateInput("From", "2025-11-29")),
+                  Expanded(
+                    child: _buildDateInput(
+                      "From",
+                      fromDate,
+                      () => _pickDate(context, true),
+                    ),
+                  ),
                   const SizedBox(width: 16),
-                  Expanded(child: _buildDateInput("To", "2025-11-29")),
+                  Expanded(
+                    child: _buildDateInput(
+                      "To",
+                      toDate,
+                      () => _pickDate(context, false),
+                    ),
+                  ),
                 ],
               ),
             ),
             const SizedBox(height: 12),
 
-            // Class Dropdown
-            _buildDropdownInput("10 - A"),
+            // Fixed: Standard Class Dropdown
+            _buildDropdownInput(
+              hint: "Select Class",
+              value: "10 - A",
+              items: ["10 - A", "10 - B", "10 - C"],
+              onChanged: (val) {},
+            ),
+
             const SizedBox(height: 16),
-
-            // Top Export Button
             _buildBlueButton("Export Report"),
-
             const SizedBox(height: 30),
 
-            // --- SECTION 2: SUMMARY (New Feature) ---
+            // --- SUMMARY SECTION ---
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -78,7 +140,6 @@ class AdvancedReportingScreen extends StatelessWidget {
                       style: GoogleFonts.poppins(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black,
                       ),
                     ),
                     Text(
@@ -86,12 +147,10 @@ class AdvancedReportingScreen extends StatelessWidget {
                       style: GoogleFonts.poppins(
                         fontSize: 12,
                         color: Colors.grey[600],
-                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ],
                 ),
-                // "View Details" Button
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
@@ -108,24 +167,17 @@ class AdvancedReportingScreen extends StatelessWidget {
                         "View Details",
                         style: GoogleFonts.poppins(
                           fontSize: 12,
-                          color: textDark,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                       const SizedBox(width: 4),
-                      const Icon(
-                        Icons.chevron_right,
-                        size: 16,
-                        color: Colors.black,
-                      ),
+                      const Icon(Icons.chevron_right, size: 16),
                     ],
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
-
-            // Horizontal Stats Cards
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
@@ -137,54 +189,97 @@ class AdvancedReportingScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-
-            // Middle Action Buttons
             _buildBlueButton("Export Report"),
             const SizedBox(height: 12),
             _buildBlueButton("Sent notifications"),
-
             const SizedBox(height: 30),
 
-            // --- SECTION 3: SCORE REPORT ---
+            // --- SCORE REPORT SECTION ---
             _buildSectionTitle("Score Report"),
             const SizedBox(height: 10),
 
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Column(
                 children: [
+                  // Class Selection
                   _buildDropdownInput(
-                    "Select the class",
-                    isPlaceholder: true,
+                    hint: "Select the class",
+                    value: selectedClass,
+                    items: ["Class 10-A", "Class 10-B", "Class 11-A"],
                     hasBorder: false,
+                    onChanged: (val) {
+                      setState(() => selectedClass = val);
+                    },
                   ),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8.0),
-                    child: Divider(height: 1),
-                  ),
+                  const Divider(height: 1),
+                  // Month Selection
                   _buildDropdownInput(
-                    "Select Month",
-                    isPlaceholder: true,
+                    hint: "Select Month",
+                    value: selectedMonth,
+                    items: ["January", "February", "March", "April"],
                     hasBorder: false,
+                    onChanged: (val) {
+                      setState(() => selectedMonth = val);
+                    },
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 16),
             _buildBlueButton("Export Report"),
-
-            const SizedBox(height: 20), // Bottom padding
+            const SizedBox(height: 20),
           ],
         ),
       ),
     );
   }
 
-  // --- Widget Helpers ---
+  // --- HELPER WIDGETS ---
+
+  Widget _buildDropdownInput({
+    required String hint,
+    required List<String> items,
+    String? value,
+    ValueChanged<String?>? onChanged,
+    bool hasBorder = true,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: hasBorder
+          ? BoxDecoration(
+              color: Colors.white,
+              border: Border.all(color: Colors.blueAccent),
+              borderRadius: BorderRadius.circular(12),
+            )
+          : null,
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: value,
+          hint: Text(
+            hint,
+            style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[600]),
+          ),
+          isExpanded: true,
+          icon: const Icon(Icons.keyboard_arrow_down, color: Colors.black),
+          items: items.map((String item) {
+            return DropdownMenuItem<String>(
+              value: item,
+              child: Text(
+                item,
+                style: GoogleFonts.poppins(color: Colors.black87),
+              ),
+            );
+          }).toList(),
+          onChanged: onChanged,
+        ),
+      ),
+    );
+  }
 
   Widget _buildSectionTitle(String title) {
     return Text(
@@ -197,78 +292,46 @@ class AdvancedReportingScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildDateInput(String label, String date) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: GoogleFonts.poppins(
-            fontSize: 12,
-            color: Colors.grey[600],
-            fontWeight: FontWeight.w500,
+  // UPDATED: Now accepts DateTime and onTap callback
+  Widget _buildDateInput(String label, DateTime date, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: GoogleFonts.poppins(
+              fontSize: 12,
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w500,
+            ),
           ),
-        ),
-        const SizedBox(height: 6),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.blueAccent),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                date,
-                style: GoogleFonts.poppins(fontSize: 12, color: Colors.black87),
-              ),
-              Icon(Icons.access_time, size: 16, color: Colors.grey[500]),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDropdownInput(
-    String text, {
-    bool isPlaceholder = false,
-    bool hasBorder = true,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      decoration: hasBorder
-          ? BoxDecoration(
-              color: Colors.white,
+          const SizedBox(height: 6),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors
+                  .transparent, // Ensures the click passes through if needed, though GestureDetector handles it
               border: Border.all(color: Colors.blueAccent),
-              borderRadius: BorderRadius.circular(12),
-            )
-          : null, // If no border, rely on parent container
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: isPlaceholder ? null : text,
-          hint: isPlaceholder
-              ? Text(
-                  text,
-                  style: GoogleFonts.poppins(
-                    fontSize: 13,
-                    color: Colors.grey[600],
-                  ),
-                )
-              : null,
-          isExpanded: true,
-          icon: const Icon(Icons.keyboard_arrow_down, color: Colors.black),
-          items: isPlaceholder
-              ? []
-              : [text]
-                    .map(
-                      (item) =>
-                          DropdownMenuItem(value: item, child: Text(item)),
-                    )
-                    .toList(),
-          onChanged: (_) {},
-        ),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  _formatDate(date),
+                  style: GoogleFonts.poppins(fontSize: 12),
+                ),
+                Icon(
+                  Icons.access_time, // Or Icons.calendar_today
+                  size: 16,
+                  color: Colors.grey[500],
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -299,8 +362,8 @@ class AdvancedReportingScreen extends StatelessWidget {
 
   Widget _buildSummaryCard(String title, String mainValue, String? subValue) {
     return Container(
-      width: 130, // Fixed width for cards
-      height: 90,
+      width: 130,
+      height: 100,
       margin: const EdgeInsets.only(right: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -319,15 +382,13 @@ class AdvancedReportingScreen extends StatelessWidget {
               color: Colors.grey[600],
             ),
             maxLines: 1,
-            overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           Text(
             mainValue,
             style: GoogleFonts.poppins(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Colors.black,
             ),
           ),
           if (subValue != null)

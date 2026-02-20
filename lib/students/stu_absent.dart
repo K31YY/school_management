@@ -10,7 +10,7 @@ class RequestForYouScreen extends StatefulWidget {
 
 class _RequestForYouScreenState extends State<RequestForYouScreen> {
   // Colors
-  final Color primaryBlue = const Color(0xFF0055FF);
+  final Color primaryBlue = const Color(0xFF4A5BF6);
   final Color backgroundGrey = const Color(0xFFF0F0F0);
   final Color textDark = const Color(0xFF333333);
 
@@ -264,7 +264,7 @@ class _RequestForYouScreenState extends State<RequestForYouScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black,
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),

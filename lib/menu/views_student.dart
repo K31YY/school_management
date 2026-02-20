@@ -9,7 +9,7 @@ class ViewsStudent extends StatefulWidget {
 
 class _ViewsStudentState extends State<ViewsStudent> {
   // Colors
-  final Color _primaryBlue = const Color(0xFF0D61FF);
+  final Color _primaryBlue = const Color(0xFF4A5BF6);
   final Color _bgGray = const Color(0xFFF0F0F0);
   final Color _actionBlue = const Color(0xFF29B6F6); // Lighter blue for buttons
 
@@ -65,7 +65,7 @@ class _ViewsStudentState extends State<ViewsStudent> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(30),
-                border: Border.all(color: _primaryBlue.withOpacity(0.3)),
+                border: Border.all(color: _primaryBlue),
               ),
               child: const TextField(
                 decoration: InputDecoration(
@@ -107,7 +107,7 @@ class _ViewsStudentState extends State<ViewsStudent> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _primaryBlue.withOpacity(0.5)),
+        border: Border.all(color: _primaryBlue),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,

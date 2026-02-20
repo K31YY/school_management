@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:ungthoung_app/menu/assign_schedule.dart';
 import 'package:ungthoung_app/menu/navigation_menu.dart';
+import 'package:ungthoung_app/menu/report_area.dart';
 import 'package:ungthoung_app/menu/views_student.dart';
 import 'package:ungthoung_app/menu/views_teacher.dart';
 import 'package:ungthoung_app/notification_screen.dart';
@@ -10,7 +12,6 @@ import 'package:ungthoung_app/teachers/teacher_dashboard.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // កុំភ្លេចដាក់ Firebase.initializeApp() ប្រសិនបើអ្នកប្រើ Firebase ក្នុង main
   runApp(const AppDashboard());
 }
 
@@ -21,7 +22,10 @@ class AppDashboard extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'SchoolApp',
-      theme: ThemeData(primarySwatch: Colors.blue, fontFamily: 'KantumruyPro'),
+      theme: ThemeData(
+        primaryColor: const Color(0xFF4A5BF6),
+        fontFamily: 'KantumruyPro',
+      ),
       home: const HomeScreen(),
       debugShowCheckedModeBanner: false,
     );
@@ -126,7 +130,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 18,
+                        fontSize: 22,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -347,6 +351,7 @@ class _HomeScreenState extends State<HomeScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
+          // ignore: deprecated_member_use
           BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
         ],
       ),
@@ -376,9 +381,15 @@ class _HomeScreenState extends State<HomeScreen> {
               MaterialPageRoute(builder: (context) => const StudentDashboard()),
             );
           } else if (label == 'Reporting') {
-            // ប្តូរទៅកាន់ទំព័រ Reporting
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const ReportingScreen()),
+            );
           } else if (label == 'Schedule') {
-            // ប្តូរទៅកាន់ទំព័រ Schedule
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const AssignSchedule()),
+            );
           }
         },
         child: Column(

@@ -1,8 +1,6 @@
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-// import 'package:ungthoung_app/cards/teacher.dart'; // Uncomment if you have this file
 
 class AddTeacher extends StatefulWidget {
   const AddTeacher({super.key});
@@ -13,13 +11,63 @@ class AddTeacher extends StatefulWidget {
 
 class _AddTeacherState extends State<AddTeacher> {
   // Colors
-  final Color _primaryBlue = const Color(0xFF0D61FF);
+  final Color _primaryBlue = const Color(0xFF4A5BF6);
   final Color _bgGray = const Color(0xFFF0F0F0);
-  final Color _borderColor = const Color(0xFF0D61FF).withOpacity(0.5);
+  final Color _borderColor = const Color(0xFF0D61FF);
 
   // State
   int _selectedTabIndex = 0; // 0 = Personal Info, 1 = Professional
   String _selectedGender = "Male"; // Default value for dropdown
+
+  // --- NEW: Image File Variable ---
+  File? _imageFile;
+
+  // Controllers
+  final TextEditingController _dobController = TextEditingController();
+  final TextEditingController _startDateController = TextEditingController();
+  final TextEditingController _endDateController = TextEditingController();
+
+  @override
+  void dispose() {
+    _dobController.dispose();
+    _startDateController.dispose();
+    _endDateController.dispose();
+    super.dispose();
+  }
+
+  // --- NEW: Logic to Pick Image ---
+  Future<void> _pickImage() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? pickedFile = await picker.pickImage(
+      source: ImageSource.gallery,
+    );
+
+    if (pickedFile != null) {
+      setState(() {
+        _imageFile = File(pickedFile.path);
+      });
+    }
+  }
+
+  // --- Logic: Pick Date ---
+  Future<void> _pickDate(
+    BuildContext context,
+    TextEditingController controller,
+  ) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(1900),
+      lastDate: DateTime(2100),
+    );
+
+    if (picked != null) {
+      setState(() {
+        controller.text =
+            "${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}";
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,13 +93,8 @@ class _AddTeacherState extends State<AddTeacher> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. Custom Tab Bar (Always visible)
             _buildCustomTabBar(),
-
             const SizedBox(height: 25),
-
-            // 2. Content Switching Logic
-            // If tab 0 is selected, show Personal Info. Otherwise, show Professional.
             _selectedTabIndex == 0
                 ? _buildPersonalInfoContent()
                 : _buildProfessionalContent(),
@@ -66,48 +109,71 @@ class _AddTeacherState extends State<AddTeacher> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Image Placeholder
+        // --- UPDATED: Image Placeholder with Click Action ---
         Center(
-          child: Container(
-            width: 100,
-            height: 120,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(color: Colors.black26),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Stack(
-              children: [
-                Positioned(
-                  bottom: 4,
-                  right: 4,
-                  child: Icon(
-                    Icons.drive_folder_upload,
-                    color: _primaryBlue,
-                    size: 24,
-                  ),
-                ),
-              ],
+          child: GestureDetector(
+            onTap: _pickImage, // Triggers image selection
+            child: Container(
+              width: 100,
+              height: 120,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border.all(color: Colors.black26),
+                borderRadius: BorderRadius.circular(4),
+                // If image exists, show it as background
+                image: _imageFile != null
+                    ? DecorationImage(
+                        image: FileImage(_imageFile!),
+                        fit: BoxFit.cover,
+                      )
+                    : null,
+              ),
+              child: _imageFile == null
+                  ? Stack(
+                      children: [
+                        // Optional: Center icon for empty state
+                        Center(
+                          child: Icon(
+                            Icons.person,
+                            size: 40,
+                            color: Colors.grey[300],
+                          ),
+                        ),
+                        Positioned(
+                          bottom: 4,
+                          right: 4,
+                          child: Icon(
+                            Icons.drive_folder_upload,
+                            color: _primaryBlue,
+                            size: 24,
+                          ),
+                        ),
+                      ],
+                    )
+                  : null, // If image is selected, don't show the icons inside
             ),
           ),
         ),
         const SizedBox(height: 20),
 
-        // "Information" Label
         const Text(
           "Information",
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
         const SizedBox(height: 10),
 
-        // Form Fields
         _buildTextField(hint: "Full Name"),
         const SizedBox(height: 15),
 
         _buildDropdownField(),
         const SizedBox(height: 15),
 
-        _buildTextField(hint: "2025-11-23", icon: Icons.access_time),
+        _buildTextField(
+          hint: "Date of Birth (YYYY-MM-DD)",
+          icon: Icons.schedule,
+          controller: _dobController,
+          onTap: () => _pickDate(context, _dobController),
+        ),
         const SizedBox(height: 15),
 
         _buildTextField(hint: "Phone Number"),
@@ -129,17 +195,17 @@ class _AddTeacherState extends State<AddTeacher> {
           ),
           child: Row(
             children: [
-              Expanded(child: _buildDateSubField("Start", "2025-11-29")),
+              Expanded(
+                child: _buildDateSubField("Start", _startDateController),
+              ),
               const SizedBox(width: 15),
-              Expanded(child: _buildDateSubField("End", "2026-11-29")),
+              Expanded(child: _buildDateSubField("End", _endDateController)),
             ],
           ),
         ),
 
         const SizedBox(height: 30),
-
-        _buildSaveButton(), // Reusable save button
-
+        _buildSaveButton(),
         const SizedBox(height: 20),
       ],
     );
@@ -149,14 +215,10 @@ class _AddTeacherState extends State<AddTeacher> {
   Widget _buildProfessionalContent() {
     return Column(
       children: [
-        // Fields specific to the Professional Tab
         _buildTextField(hint: "Certificate"),
         const SizedBox(height: 15),
         _buildTextField(hint: "Skills"),
-
-        // Add spacing to push the button down slightly
         const SizedBox(height: 50),
-
         _buildSaveButton(),
       ],
     );
@@ -176,7 +238,8 @@ class _AddTeacherState extends State<AddTeacher> {
           ),
         ),
         onPressed: () {
-          // Add your save logic here
+          // You can access _imageFile here to upload it later
+        ("Image Selected: ${_imageFile?.path}");
         },
         child: const Text(
           "Save",
@@ -259,7 +322,12 @@ class _AddTeacherState extends State<AddTeacher> {
     );
   }
 
-  Widget _buildTextField({required String hint, IconData? icon}) {
+  Widget _buildTextField({
+    required String hint,
+    IconData? icon,
+    TextEditingController? controller,
+    VoidCallback? onTap,
+  }) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -267,6 +335,9 @@ class _AddTeacherState extends State<AddTeacher> {
         border: Border.all(color: _borderColor),
       ),
       child: TextField(
+        controller: controller,
+        readOnly: onTap != null,
+        onTap: onTap,
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
@@ -308,7 +379,7 @@ class _AddTeacherState extends State<AddTeacher> {
     );
   }
 
-  Widget _buildDateSubField(String label, String date) {
+  Widget _buildDateSubField(String label, TextEditingController controller) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -323,28 +394,45 @@ class _AddTeacherState extends State<AddTeacher> {
             ),
           ),
         ),
-        Container(
-          height: 45,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(25),
-            border: Border.all(color: _borderColor),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(left: 15),
-                child: Text(
-                  date,
-                  style: TextStyle(color: Colors.grey[600], fontSize: 13),
+        GestureDetector(
+          onTap: () => _pickDate(context, controller),
+          child: Container(
+            height: 45,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(25),
+              border: Border.all(color: _borderColor),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 15),
+                    child: IgnorePointer(
+                      child: TextField(
+                        controller: controller,
+                        readOnly: true,
+                        decoration: InputDecoration(
+                          hintText: "Select Date",
+                          hintStyle: TextStyle(
+                            color: Colors.grey[400],
+                            fontSize: 13,
+                          ),
+                          border: InputBorder.none,
+                          isDense: true,
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                        style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-              const Padding(
-                padding: EdgeInsets.only(right: 10),
-                child: Icon(Icons.access_time, size: 18, color: Colors.grey),
-              ),
-            ],
+                const Padding(
+                  padding: EdgeInsets.only(right: 10),
+                  child: Icon(Icons.schedule, size: 18, color: Colors.grey),
+                ),
+              ],
+            ),
           ),
         ),
       ],

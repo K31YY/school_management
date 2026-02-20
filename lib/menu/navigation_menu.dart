@@ -5,7 +5,7 @@ import 'package:ungthoung_app/menu/assign_schedule.dart';
 import 'package:ungthoung_app/menu/change_password.dart';
 import 'package:ungthoung_app/menu/report_area.dart';
 import 'package:ungthoung_app/menu/views_student.dart';
-import 'package:ungthoung_app/students/add_student.dart';
+import 'package:ungthoung_app/menu/add_student.dart';
 import 'package:ungthoung_app/menu/add_teacher.dart';
 import 'package:ungthoung_app/menu/views_teacher.dart';
 
@@ -254,6 +254,7 @@ class _NavigetionMenuState extends State<NavigetionMenu> {
     );
   }
 
+  // ignore: non_constant_identifier_names
   void _NavigateTo(BuildContext context, Widget page) {
     Navigator.pop(context);
     Navigator.push(context, MaterialPageRoute(builder: (context) => page));

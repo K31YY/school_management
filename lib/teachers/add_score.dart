@@ -10,7 +10,7 @@ class AddScoreScreen extends StatefulWidget {
 
 class _AddScoreScreenState extends State<AddScoreScreen> {
   // Colors
-  final Color primaryBlue = const Color(0xFF0055FF);
+  final Color primaryBlue = const Color(0xFF4A5BF6);
   final Color backgroundGrey = const Color(0xFFF0F0F0);
   final Color textDark = const Color(0xFF333333);
 
@@ -173,7 +173,7 @@ class _AddScoreScreenState extends State<AddScoreScreen> {
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
+                          color: Colors.black,
                           blurRadius: 5,
                           offset: const Offset(0, 2),
                         ),
