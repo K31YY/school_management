@@ -1,11 +1,9 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_easyloading/flutter_easyloading.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:ungthoung_app/app_colors.dart';
-import 'package:ungthoung_app/app_dashboard.dart';
-import 'package:ungthoung_app/signup_user.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
+import 'package:ungthoung_app/app_dashboard.dart'; // កែឈ្មោះតាម file dashboard របស់អ្នក
 
 class LoginUser extends StatefulWidget {
   const LoginUser({super.key});
@@ -15,202 +13,153 @@ class LoginUser extends StatefulWidget {
 }
 
 class _LoginUserState extends State<LoginUser> {
-  bool ispassword = true;
-  final txt = FocusNode();
-  void togglePassword() {
-    setState(() {
-      ispassword = !ispassword;
-      if (txt.hasPrimaryFocus) return;
-      txt.canRequestFocus = false;
-    });
-  }
+  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  bool _isObscure = true;
 
-  final _keyForm = GlobalKey<FormState>();
-  TextEditingController controllerEmail = TextEditingController();
-  TextEditingController controllerPassword = TextEditingController();
+  // មុខងារ Login តភ្ជាប់ទៅ MySQL API
+  Future<void> loginUser() async {
+    String username = _usernameController.text.trim();
+    String password = _passwordController.text.trim();
 
-  Future<void> loginUser(String email, String password) async {
+    if (username.isEmpty || password.isEmpty) {
+      EasyLoading.showError('សូមបំពេញព័ត៌មានឱ្យអស់!');
+      return;
+    }
+
+    // កុំភ្លេចដូរ IP ទៅតាមម៉ាស៊ីន Backend របស់អ្នក (ឧទាហរណ៍: 192.168.1.10)
+    final url = Uri.parse('http://10.0.2.2:8000/api/login');
+
     try {
-      EasyLoading.show(status: 'Loggin in...');
-      await Future.delayed(Duration(seconds: 1));
-      UserCredential userCredential = await FirebaseAuth.instance
-          .signInWithEmailAndPassword(email: email, password: password);
-      User? user = userCredential.user;
-      if (user != null) {
-        // loggin successed
-        // save user login infor
-        final sp = await SharedPreferences.getInstance();
+      EasyLoading.show(status: 'Login...');
 
-        DocumentSnapshot userData = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .get();
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({'Username': username, 'Password': password}),
+      );
 
-        Map<String, dynamic> data = userData.data() as Map<String, dynamic>;
+      EasyLoading.dismiss();
 
-        sp.setString('UID', user.uid);
-        sp.setString('FULLNAME', data['fullname']);
-        sp.setString('EMAIL', data['email']);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
 
-        EasyLoading.dismiss();
-        if(!mounted) return;
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => const AppDashboard()),
-          (route) => false,
-        );
+        if (data['success'] == true) {
+          // --- ចំណុចសំខាន់៖ រក្សាទុកឈ្មោះអ្នកប្រើ (admin01) ចូលក្នុងម៉ាស៊ីន ---
+          final sp = await SharedPreferences.getInstance();
+
+          // ទាញយក Username ពីក្នុង Object 'user' នៃ API Response
+          String nameFromApi = data['user']['Username'];
+          String roleFromApi = data['user']['Role'];
+
+          await sp.setString('FULLNAME', nameFromApi);
+          await sp.setString('ROLE', roleFromApi);
+          await sp.setString('TOKEN', data['token']);
+
+          if (!mounted) return;
+
+          EasyLoading.showSuccess('ចូលប្រើប្រាស់ជោគជ័យ!');
+
+          // ទៅកាន់ទំព័រ Dashboard
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const AppDashboard()),
+          );
+        } else {
+          EasyLoading.showError('ឈ្មោះអ្នកប្រើ ឬលេខសម្ងាត់មិនត្រឹមត្រូវ!');
+        }
       } else {
-        EasyLoading.showError('Login Failed');
+        EasyLoading.showError('ការចូលប្រើប្រាស់បរាជ័យ!');
       }
-    } catch (ex) {
-      EasyLoading.showError('Error: $ex');
+    } catch (e) {
+      EasyLoading.dismiss();
+      EasyLoading.showError('មិនអាចភ្ជាប់ទៅកាន់ Server បានទេ!');
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // appBar: AppBar(title: Text('Login User')),
-      body: Form(
-        key: _keyForm,
-        child: ListView(
-          children: <Widget>[
-            Container(
-              alignment: Alignment.center,
-              margin: EdgeInsets.fromLTRB(10, 30, 10, 20),
-              child: Image.asset(
-                'assets/images/logo.png',
-                width: 600,
-                height: 300,
+      backgroundColor: Colors.white,
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(25.0),
+          child: Column(
+            children: [
+              const SizedBox(height: 80),
+              // Logo ឬ រូបភាព
+              const Icon(Icons.school, size: 100, color: Color(0xFF4A5BF6)),
+              const SizedBox(height: 20),
+              const Text(
+                "Welcome Back",
+                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
               ),
-            ),
-            SizedBox(height: 35),
-            Container(
-              margin: EdgeInsets.fromLTRB(20, 0, 20, 10),
-              child: TextFormField(
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter email';
-                  }
-                  if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
-                    return 'Email is invaild!';
-                  }
-                  return null;
-                },
-                controller: controllerEmail,
+              const Text(
+                "Login to your account",
+                style: TextStyle(color: Colors.grey),
+              ),
+              const SizedBox(height: 40),
+
+              // Username Field
+              TextField(
+                controller: _usernameController,
                 decoration: InputDecoration(
-                  filled: true,
-                  fillColor: AppColors.blue,
+                  labelText: "Username",
+                  prefixIcon: const Icon(Icons.person_outline),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(15),
                   ),
-                  labelText: 'Email',
-                  labelStyle: TextStyle(color: Colors.black),
-                  prefixIcon: Icon(Icons.account_circle),
-                  prefixIconColor: Colors.black,
                 ),
               ),
-            ),
-            Container(
-              margin: EdgeInsets.fromLTRB(20, 0, 20, 0),
-              child: TextFormField(
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter password';
-                  }
-                  if (value.length < 6) {
-                    return 'Password must be at least 6 characters';
-                  }
-                  return null;
-                },
-                controller: controllerPassword,
-                obscureText: ispassword,
+              const SizedBox(height: 20),
+
+              // Password Field
+              TextField(
+                controller: _passwordController,
+                obscureText: _isObscure,
                 decoration: InputDecoration(
-                  filled: true,
-                  fillColor: AppColors.blue,
+                  labelText: "Password",
+                  prefixIcon: const Icon(Icons.lock_outline),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _isObscure ? Icons.visibility : Icons.visibility_off,
+                    ),
+                    onPressed: () => setState(() => _isObscure = !_isObscure),
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(15),
                   ),
-                  labelText: 'Password',
-                  labelStyle: TextStyle(color: Colors.black),
-                  prefixIcon: Icon(Icons.lock),
-                  prefixIconColor: Colors.black,
-                  suffixIcon: Padding(
-                    padding: EdgeInsets.fromLTRB(10, 0, 10, 0),
-                    child: GestureDetector(
-                      onTap: togglePassword,
-                      child: Icon(
-                        // condition ? expr1 : expr2;
-                        ispassword
-                            ? Icons.visibility_rounded
-                            : Icons.visibility_off_rounded,
-                        color: Colors.black,
-                      ),
+                ),
+              ),
+              const SizedBox(height: 30),
+
+              // Login Button
+              SizedBox(
+                width: double.infinity,
+                height: 55,
+                child: ElevatedButton(
+                  onPressed: loginUser,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4A5BF6),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                  ),
+                  child: const Text(
+                    "LOGIN",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
               ),
-            ),
-            Container(
-              height: 55,
-              margin: EdgeInsets.fromLTRB(20, 10, 20, 10),
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.button,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                ),
-                onPressed: () {
-                  if (_keyForm.currentState!.validate()) {
-                    String email = controllerEmail.text.trim();
-                    String password = controllerPassword.text.trim();
-                    loginUser(email, password);
-                  }
-                },
-                child: Text(
-                  'LOGIN',
-                  style: TextStyle(
-                    color: AppColors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                  ),
-                ),
-              ),
-            ),
-            Container(
-              margin: EdgeInsets.all(10),
-              child: TextButton(
-                onPressed: () {},
-                child: Text(
-                  'Forgot Password?',
-                  style: TextStyle(color: AppColors.bgColor),
-                ),
-              ),
-            ),
-            SizedBox(height: 30),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                Text('Does not have account?'),
-                SizedBox(width: 10),
-                TextButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const SignupUser(),
-                      ),
-                    );
-                  },
-                  child: Text(
-                    'Sign Up',
-                    style: TextStyle(color: AppColors.bgColor),
-                  ),
-                ),
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
