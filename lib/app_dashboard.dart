@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ungthoung_app/menu/assign_schedule.dart';
 import 'package:ungthoung_app/menu/navigation_menu.dart';
 import 'package:ungthoung_app/menu/report_area.dart';
@@ -8,50 +7,22 @@ import 'package:ungthoung_app/menu/views_student.dart';
 import 'package:ungthoung_app/menu/views_teacher.dart';
 import 'package:ungthoung_app/notification_screen.dart';
 import 'package:ungthoung_app/students/student_dashboard.dart';
-import 'package:ungthoung_app/teachers/teacher_dashboard.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  runApp(const AppDashboard());
-}
-
-class AppDashboard extends StatelessWidget {
+class AppDashboard extends StatefulWidget {
   const AppDashboard({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'SchoolApp',
-      theme: ThemeData(
-        primaryColor: const Color(0xFF4A5BF6),
-        fontFamily: 'KantumruyPro',
-      ),
-      home: const HomeScreen(),
-      debugShowCheckedModeBanner: false,
-    );
-  }
+  State<AppDashboard> createState() => _AppDashboardState();
 }
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
-
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
+class _AppDashboardState extends State<AppDashboard> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  Future<Map<String, dynamic>?> _getUserData() async {
-    User? user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      DocumentSnapshot doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
-      return doc.data() as Map<String, dynamic>?;
-    }
-    return null;
+  // មុខងារទាញឈ្មោះពី SharedPreferences ជំនួស Firebase
+  Future<String> _getUserName() async {
+    final sp = await SharedPreferences.getInstance();
+    // បើរកមិនឃើញឈ្មោះ វានឹងបង្ហាញថា Guest User
+    return sp.getString('FULLNAME') ?? "Guest User";
   }
 
   String getGreeting() {
@@ -67,14 +38,15 @@ class _HomeScreenState extends State<HomeScreen> {
       key: _scaffoldKey,
       backgroundColor: const Color(0xFFF4F6F8),
       drawer: const NavigetionMenu(),
-      body: FutureBuilder<Map<String, dynamic>?>(
-        future: _getUserData(),
+      body: FutureBuilder<String>(
+        future: _getUserName(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          String name = snapshot.data?['fullname'] ?? "Guest User";
+          // ឈ្មោះដែលបានមកពី MySQL (ឧទាហរណ៍៖ admin01)
+          String name = snapshot.data ?? "Guest User";
           String welcomeMessage = getGreeting();
 
           return SingleChildScrollView(
@@ -130,7 +102,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 22,
+                        fontSize: 20,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -140,14 +112,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         size: 28,
                         color: Colors.white,
                       ),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const NotificationScreen(),
-                          ),
-                        );
-                      },
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const NotificationScreen(),
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -178,13 +148,14 @@ class _HomeScreenState extends State<HomeScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          greetingText, // លុប 'const' និង '()' ចេញ
+                          greetingText,
                           style: const TextStyle(
                             color: Colors.grey,
                             fontSize: 16,
                           ),
                         ),
                         const SizedBox(height: 4),
+                        // បង្ហាញឈ្មោះពិតដែលទាញបានពី MySQL
                         Text(
                           displayName,
                           style: const TextStyle(
@@ -211,7 +182,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // --- _buildBody, _buildInfoCard, _buildGridItem ទុកដូចដើម ---
   Widget _buildBody(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(20.0),
@@ -249,36 +219,42 @@ class _HomeScreenState extends State<HomeScreen> {
             mainAxisSpacing: 15,
             children: [
               _buildGridItem(
+                context,
                 'Teacher\nLists',
                 Icons.cast_for_education,
                 const Color(0xFFD4F8E6),
                 const Color(0xFF34C759),
               ),
               _buildGridItem(
+                context,
                 'Student\nLists',
                 Icons.people_alt,
                 const Color(0xFFE3E6FD),
                 const Color(0xFF4A5BF6),
               ),
               _buildGridItem(
+                context,
                 'Subjects',
                 Icons.book,
                 const Color(0xFFFEF4DB),
                 const Color(0xFFFF9500),
               ),
               _buildGridItem(
+                context,
                 'Class',
                 Icons.meeting_room,
                 const Color(0xFFE6DFFB),
                 const Color(0xFF9059FF),
               ),
               _buildGridItem(
+                context,
                 'Reporting',
                 Icons.bar_chart,
                 const Color(0xFFD9EEFD),
                 const Color(0xFF5AC8FA),
               ),
               _buildGridItem(
+                context,
                 'Schedule',
                 Icons.calendar_today,
                 const Color(0xFFFEDDE4),
@@ -341,6 +317,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildGridItem(
+    BuildContext context,
     String label,
     IconData icon,
     Color bgColor,
@@ -351,15 +328,12 @@ class _HomeScreenState extends State<HomeScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
-          // ignore: deprecated_member_use
           BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
         ],
       ),
       child: InkWell(
-        // ប្រើ InkWell ដើម្បីឱ្យមាន Effect ពេលចុច (Ripple Effect)
         borderRadius: BorderRadius.circular(20),
         onTap: () {
-          // កូដសម្រាប់ប្តូរទៅកាន់ Screen ផ្សេងៗ
           if (label.contains('Teacher')) {
             Navigator.push(
               context,
@@ -370,16 +344,6 @@ class _HomeScreenState extends State<HomeScreen> {
               context,
               MaterialPageRoute(builder: (context) => const ViewsStudent()),
             );
-          } else if (label == 'Subjects') {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const DashboardScreen()),
-            );
-          } else if (label == 'Class') {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const StudentDashboard()),
-            );
           } else if (label == 'Reporting') {
             Navigator.push(
               context,
@@ -389,6 +353,11 @@ class _HomeScreenState extends State<HomeScreen> {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const AssignSchedule()),
+            );
+          } else if (label == 'Class') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const StudentDashboard()),
             );
           }
         },
