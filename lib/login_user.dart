@@ -51,7 +51,7 @@ class _LoginUserState extends State<LoginUser> {
         if (data['success'] == true) {
           final sp = await SharedPreferences.getInstance();
 
-          // Store the token, fullname, and role in SharedPreferences
+          // Assuming the API returns a 'user' object with 'Username' and 'Role' fields, and a 'token' for authentication
           String nameFromApi = data['user']['Username'];
           String roleFromApi = data['user']['Role'];
 
