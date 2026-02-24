@@ -49,7 +49,7 @@ class _LoginUserState extends State<LoginUser> {
         if (data['success'] == true) {
           final sp = await SharedPreferences.getInstance();
 
-          // ទាញយក Username ពីក្នុង Object 'user' នៃ API Response
+          // Get the actual name and role from the API response and save to SharedPreferences
           String nameFromApi = data['user']['Username'];
           String roleFromApi = data['user']['Role'];
 
@@ -88,16 +88,18 @@ class _LoginUserState extends State<LoginUser> {
           child: Column(
             children: [
               const SizedBox(height: 80),
-              // Logo ឬ រូបភាព
               const Icon(Icons.school, size: 100, color: Color(0xFF4A5BF6)),
               const SizedBox(height: 20),
               const Text(
-                "Welcome Back",
+                "Ung Thoung Buddhist",
                 style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
               ),
               const Text(
-                "Login to your account",
-                style: TextStyle(color: Colors.grey),
+                "High School",
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontWeight: FontWeight.w500,
+                  fontSize: 18,),
               ),
               const SizedBox(height: 40),
 
