@@ -40,7 +40,7 @@ dependencies:
   image_picker: ^1.2.1
   firebase_core: ^2.32.0
   cloud_firestore: ^4.17.5
-  google_fonts: ^8.0.0
+  google_fonts: ^8.0.2
   http: ^1.6.0
 
 dev_dependencies:
@@ -84,10 +84,13 @@ flutter:
   # list giving the asset and other descriptors for the font. For
   # example:
   # fonts:
-  #   - family: Schyler
+  #   - family: JetBrains Mono
   #     fonts:
-  #       - asset: fonts/Schyler-Regular.ttf
-  #       - asset: fonts/Schyler-Italic.ttf
+  #       - asset: fonts/JetbrainsMono-Regular.ttf
+  #         weight: 400
+  #         style: normal
+  #       - asset: fonts/JetbrainsMono-Italic.ttf
+  #         weight: 400
   #         style: italic
   #   - family: Trajan Pro
   #     fonts:
@@ -97,3 +100,4 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+ 
