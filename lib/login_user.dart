@@ -63,7 +63,7 @@ class _LoginUserState extends State<LoginUser> {
 
           EasyLoading.showSuccess('Login successful!');
 
-          // ទៅកាន់ទំព័រ Dashboard
+          // Navigate to dashboard after successful login
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (context) => const AppDashboard()),
