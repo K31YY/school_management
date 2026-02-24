@@ -18,10 +18,8 @@ class AppDashboard extends StatefulWidget {
 class _AppDashboardState extends State<AppDashboard> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  // មុខងារទាញឈ្មោះពី SharedPreferences ជំនួស Firebase
   Future<String> _getUserName() async {
     final sp = await SharedPreferences.getInstance();
-    // បើរកមិនឃើញឈ្មោះ វានឹងបង្ហាញថា Guest User
     return sp.getString('FULLNAME') ?? "Guest User";
   }
 
@@ -45,7 +43,6 @@ class _AppDashboardState extends State<AppDashboard> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          // ឈ្មោះដែលបានមកពី MySQL (ឧទាហរណ៍៖ admin01)
           String name = snapshot.data ?? "Guest User";
           String welcomeMessage = getGreeting();
 
@@ -155,7 +152,6 @@ class _AppDashboardState extends State<AppDashboard> {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        // បង្ហាញឈ្មោះពិតដែលទាញបានពី MySQL
                         Text(
                           displayName,
                           style: const TextStyle(
@@ -328,6 +324,7 @@ class _AppDashboardState extends State<AppDashboard> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
+          // ignore: deprecated_member_use
           BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
         ],
       ),

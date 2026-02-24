@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
-import 'package:ungthoung_app/app_dashboard.dart'; // កែឈ្មោះតាម file dashboard របស់អ្នក
+import 'package:ungthoung_app/app_dashboard.dart';
 
 class LoginUser extends StatefulWidget {
   const LoginUser({super.key});
@@ -17,17 +17,16 @@ class _LoginUserState extends State<LoginUser> {
   final TextEditingController _passwordController = TextEditingController();
   bool _isObscure = true;
 
-  // មុខងារ Login តភ្ជាប់ទៅ MySQL API
+  // Login to API Laravel
   Future<void> loginUser() async {
     String username = _usernameController.text.trim();
     String password = _passwordController.text.trim();
 
     if (username.isEmpty || password.isEmpty) {
-      EasyLoading.showError('សូមបំពេញព័ត៌មានឱ្យអស់!');
+      EasyLoading.showError('please fill in all fields!');
       return;
     }
 
-    // កុំភ្លេចដូរ IP ទៅតាមម៉ាស៊ីន Backend របស់អ្នក (ឧទាហរណ៍: 192.168.1.10)
     final url = Uri.parse('http://10.0.2.2:8000/api/login');
 
     try {
@@ -48,7 +47,6 @@ class _LoginUserState extends State<LoginUser> {
         final data = jsonDecode(response.body);
 
         if (data['success'] == true) {
-          // --- ចំណុចសំខាន់៖ រក្សាទុកឈ្មោះអ្នកប្រើ (admin01) ចូលក្នុងម៉ាស៊ីន ---
           final sp = await SharedPreferences.getInstance();
 
           // ទាញយក Username ពីក្នុង Object 'user' នៃ API Response
@@ -61,7 +59,7 @@ class _LoginUserState extends State<LoginUser> {
 
           if (!mounted) return;
 
-          EasyLoading.showSuccess('ចូលប្រើប្រាស់ជោគជ័យ!');
+          EasyLoading.showSuccess('Login successful!');
 
           // ទៅកាន់ទំព័រ Dashboard
           Navigator.pushReplacement(
@@ -69,14 +67,14 @@ class _LoginUserState extends State<LoginUser> {
             MaterialPageRoute(builder: (context) => const AppDashboard()),
           );
         } else {
-          EasyLoading.showError('ឈ្មោះអ្នកប្រើ ឬលេខសម្ងាត់មិនត្រឹមត្រូវ!');
+          EasyLoading.showError('Invalid username or password!');
         }
       } else {
-        EasyLoading.showError('ការចូលប្រើប្រាស់បរាជ័យ!');
+        EasyLoading.showError('Login failed!');
       }
     } catch (e) {
       EasyLoading.dismiss();
-      EasyLoading.showError('មិនអាចភ្ជាប់ទៅកាន់ Server បានទេ!');
+      EasyLoading.showError('An error occurred during login!');
     }
   }
 
