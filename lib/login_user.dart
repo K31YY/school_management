@@ -51,7 +51,7 @@ class _LoginUserState extends State<LoginUser> {
         if (data['success'] == true) {
           final sp = await SharedPreferences.getInstance();
 
-          // Store the token and user info in SharedPreferences
+          // Store the token, fullname, and role in SharedPreferences
           String nameFromApi = data['user']['Username'];
           String roleFromApi = data['user']['Role'];
 
@@ -90,7 +90,7 @@ class _LoginUserState extends State<LoginUser> {
           child: Column(
             children: [
               const SizedBox(height: 80),
-              // Logo and Title
+              // Replace with your actual logo image or widget
               const Icon(Icons.school, size: 100, color: Color(0xFF4A5BF6)),
               const SizedBox(height: 20),
               const Text(
@@ -98,8 +98,11 @@ class _LoginUserState extends State<LoginUser> {
                 style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
               ),
               const Text(
-                "Login to your account",
-                style: TextStyle(color: Colors.grey),
+                "High School",
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontWeight: FontWeight.w500,
+                  fontSize: 18,),
               ),
               const SizedBox(height: 40),
 
