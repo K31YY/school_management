@@ -3,7 +3,9 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
+import 'package:ungthoung_app/app_colors.dart';
 import 'package:ungthoung_app/app_dashboard.dart';
+import 'package:ungthoung_app/signup_user.dart';
 
 class LoginUser extends StatefulWidget {
   const LoginUser({super.key});
@@ -49,7 +51,7 @@ class _LoginUserState extends State<LoginUser> {
         if (data['success'] == true) {
           final sp = await SharedPreferences.getInstance();
 
-          // ទាញយក Username ពីក្នុង Object 'user' នៃ API Response
+          // Get user info from API response and save to SharedPreferences
           String nameFromApi = data['user']['Username'];
           String roleFromApi = data['user']['Role'];
 
@@ -88,16 +90,20 @@ class _LoginUserState extends State<LoginUser> {
           child: Column(
             children: [
               const SizedBox(height: 80),
-              // Logo ឬ រូបភាព
+              // Logo or Image
               const Icon(Icons.school, size: 100, color: Color(0xFF4A5BF6)),
               const SizedBox(height: 20),
               const Text(
-                "Welcome Back",
+                "Ung Thoung Buddhist",
                 style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
               ),
               const Text(
-                "Login to your account",
-                style: TextStyle(color: Colors.grey),
+                "High School",
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
               ),
               const SizedBox(height: 40),
 
@@ -105,6 +111,8 @@ class _LoginUserState extends State<LoginUser> {
               TextField(
                 controller: _usernameController,
                 decoration: InputDecoration(
+                  filled: true,
+                  fillColor: AppColors.blue,
                   labelText: "Username",
                   prefixIcon: const Icon(Icons.person_outline),
                   border: OutlineInputBorder(
@@ -119,6 +127,8 @@ class _LoginUserState extends State<LoginUser> {
                 controller: _passwordController,
                 obscureText: _isObscure,
                 decoration: InputDecoration(
+                  filled: true,
+                  fillColor: AppColors.blue,
                   labelText: "Password",
                   prefixIcon: const Icon(Icons.lock_outline),
                   suffixIcon: IconButton(
@@ -155,6 +165,42 @@ class _LoginUserState extends State<LoginUser> {
                     ),
                   ),
                 ),
+              ),
+              SizedBox(height: 25),
+              // Forgot Password
+              Text(
+                "Forgot Password?",
+                style: TextStyle(
+                  color: Colors.blue,
+                  fontFamily: 'JetBrains Mono',
+                  fontStyle: FontStyle.normal,
+                ),
+              ),
+              SizedBox(height: 50),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  Text("Don't have an account?"),
+                  SizedBox(width: 5),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const SignupUser(),
+                        ),
+                      );
+                    },
+                    child: Text(
+                      "Sign Up",
+                      style: TextStyle(
+                        color: Colors.blue,
+                        fontFamily: 'JetBrains Mono',
+                        fontStyle: FontStyle.normal,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

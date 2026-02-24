@@ -67,10 +67,10 @@ class _SignupUserState extends State<SignupUser> {
             Container(
               alignment: Alignment.center,
               margin: EdgeInsets.fromLTRB(10, 30, 10, 20),
-              child: Image.asset(
-                'assets/images/logo.png',
-                width: 600,
-                height: 300,
+              child: const Icon(
+                Icons.school,
+                color: AppColors.button,
+                size: 200,
               ),
             ),
             SizedBox(height: 35),

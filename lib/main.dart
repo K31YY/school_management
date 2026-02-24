@@ -1,15 +1,33 @@
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
-import 'package:ungthoung_app/app_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ungthoung_app/app_colors.dart';
+
+// Make sure these match your exact file names!
+import 'package:ungthoung_app/login_user.dart';
+import 'package:ungthoung_app/app_dashboard.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-  runApp(const MyApp());
+
+  bool isLoggedIn = false;
+
+  try {
+    // Read SharedPreferences safely
+    final sp = await SharedPreferences.getInstance();
+    final String? token = sp.getString('TOKEN');
+
+    // If we have a token, skip login and go to dashboard
+    if (token != null && token.isNotEmpty) {
+      isLoggedIn = true;
+    }
+  } catch (e) {
+    debugPrint("Startup Error: $e");
+  }
+
   configLoading();
+  runApp(MyApp(isLoggedIn: isLoggedIn));
 }
 
 void configLoading() {
@@ -26,32 +44,29 @@ void configLoading() {
     ..maskColor = Colors.blue
     ..userInteractions = true
     ..dismissOnTap = false;
-  // ..customAnimation = CustomAnimation();
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final bool isLoggedIn;
+
+  const MyApp({super.key, required this.isLoggedIn});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'BTB212 App',
-      home: const AppAuth(), // startup screen, launcher screen
+      // The routing magic happens right here:
+      home: isLoggedIn ? const AppDashboard() : const LoginUser(),
       builder: EasyLoading.init(),
       theme: ThemeData.light().copyWith(
-        appBarTheme: AppBarTheme(
+        appBarTheme: const AppBarTheme(
           backgroundColor: AppColors.button,
-          titleTextStyle: TextStyle(color: AppColors.white, fontSize: 18),
+          titleTextStyle: TextStyle(color: Colors.white, fontSize: 18),
           systemOverlayStyle: SystemUiOverlayStyle.light,
-          iconTheme: IconThemeData(color: AppColors.white),
+          iconTheme: IconThemeData(color: Colors.white),
         ),
       ),
     );
   }
 }
-// Widget (UI Components):
-// 1) Stateless Widget
-// 2) Statefull Widget
-
-// Material Design (Android)
-// Cupertino Design (iOS)
