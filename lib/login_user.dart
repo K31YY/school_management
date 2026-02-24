@@ -172,8 +172,6 @@ class _LoginUserState extends State<LoginUser> {
                 "Forgot Password?",
                 style: TextStyle(
                   color: Colors.blue,
-                  fontFamily: 'JetBrains Mono',
-                  fontStyle: FontStyle.normal,
                 ),
               ),
               SizedBox(height: 50),
@@ -196,8 +194,6 @@ class _LoginUserState extends State<LoginUser> {
                       "Sign Up",
                       style: TextStyle(
                         color: Colors.blue,
-                        fontFamily: 'JetBrains Mono',
-                        fontStyle: FontStyle.normal,
                       ),
                     ),
                   ),
