@@ -192,6 +192,7 @@ class _LoginUserState extends State<LoginUser> {
                       );
                     },
                     child: Text(
+                      // condition ? expr1 : expr2;
                       "Sign Up",
                       style: TextStyle(
                         color: Colors.blue,
