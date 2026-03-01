@@ -4,15 +4,11 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:ungthoung_app/app_colors.dart';
-import 'package:ungthoung_app/app_dashboard.dart'; // Dashboard ទូទៅ
+import 'package:ungthoung_app/app_dashboard.dart';
 import 'package:ungthoung_app/signup_user.dart';
 import 'package:ungthoung_app/students/student_dashboard.dart';
 import 'package:ungthoung_app/teachers/teacher_dashboard.dart';
 
-// កុំភ្លេច Import Dashboard ថ្មីៗដែលអ្នកបានបង្កើត
-// import 'package:ungthoung_app/admin_dashboard.dart';
-// import 'package:ungthoung_app/teacher_dashboard.dart';
-// import 'package:ungthoung_app/student_dashboard.dart';
 
 class LoginUser extends StatefulWidget {
   const LoginUser({super.key});
@@ -58,12 +54,12 @@ class _LoginUserState extends State<LoginUser> {
         if (data['success'] == true) {
           final sp = await SharedPreferences.getInstance();
 
-          // ទាញយកព័ត៌មានពី API
+          // Get user info from API response
           String nameFromApi = data['user']['Username'];
           String roleFromApi = data['user']['Role']; 
           String tokenFromApi = data['token'];
 
-          // រក្សាទុកក្នុង SharedPreferences
+          // Save user info to SharedPreferences
           await sp.setString('FULLNAME', nameFromApi);
           await sp.setString('ROLE', roleFromApi);
           await sp.setString('TOKEN', tokenFromApi);
@@ -72,21 +68,21 @@ class _LoginUserState extends State<LoginUser> {
 
           EasyLoading.showSuccess('Login successful!');
 
-          // --- ផ្នែកបន្ថែមលក្ខខណ្ឌប្តូរ Dashboard តាម Role ---
+          // Add logic to navigate to different dashboards based on user role
           Widget nextScreen;
 
-          // កែសម្រួលពាក្យក្នុង "" ឱ្យត្រូវតាម Database របស់អ្នក (ឧទាហរណ៍៖ Admin ឬ admin)
+          // Update this logic to match your actual role values from the API
           if (roleFromApi == 'Admin') {
-            nextScreen = const AdminDashboard(); // ជំនួសដោយ Class AdminDashboard របស់អ្នក
+            nextScreen = const AdminDashboard(); 
           } else if (roleFromApi == 'Teacher') {
-            nextScreen = const TeacherDashboard(); // ជំនួសដោយ Class TeacherDashboard របស់អ្នក
+            nextScreen = const TeacherDashboard();
           } else if (roleFromApi == 'Student') {
-            nextScreen = const StudentDashboard(); // ជំនួសដោយ Class StudentDashboard របស់អ្នក
+            nextScreen = const StudentDashboard();
           } else {
-            nextScreen = const AdminDashboard(); // បើមិនចូលលក្ខខណ្ឌខាងលើ ឱ្យទៅ Dashboard ទូទៅ
+            nextScreen = const AdminDashboard();
           }
 
-          // រុញទៅកាន់ Dashboard ដែលត្រូវតាម Role
+          // push replacement to prevent going back to login screen
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (context) => nextScreen),
