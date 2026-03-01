@@ -57,7 +57,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'BTB212 App',
       // The routing magic happens right here:
-      home: isLoggedIn ? const AppDashboard() : const LoginUser(),
+      home: isLoggedIn ? const AdminDashboard() : const LoginUser(),
       builder: EasyLoading.init(),
       theme: ThemeData.light().copyWith(
         appBarTheme: const AppBarTheme(

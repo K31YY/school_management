@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:ungthoung_app/login_user.dart';
 import 'package:ungthoung_app/menu/views_student.dart';
 import 'package:ungthoung_app/teachers/add_score.dart';
 import 'package:ungthoung_app/teachers/attandance.dart';
@@ -8,16 +10,19 @@ import 'package:ungthoung_app/teachers/teach_changepassword.dart';
 import 'package:ungthoung_app/teachers/teach_notify.dart';
 import 'package:ungthoung_app/teachers/teacher.class.dart';
 
-class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key});
+class TeacherDashboard extends StatefulWidget {
+  const TeacherDashboard({super.key});
 
   @override
-  State<DashboardScreen> createState() => _DashboardScreenState();
+  State<TeacherDashboard> createState() => _TeacherDashboardState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
-  // 1. Create a GlobalKey to control the Scaffold
+class _TeacherDashboardState extends State<TeacherDashboard> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  // Variable for storing user data
+  String userName = "Loading...";
+  String userRole = "Loading...";
 
   final Color primaryBlue = const Color(0xFF4A5BF6);
   final Color backgroundGrey = const Color(0xFFF0F0F0);
@@ -25,12 +30,66 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final Color brightGreen = const Color(0xFF2ECC71);
 
   @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  // Function data user from SharedPreferences
+  Future<void> _loadUserData() async {
+    final sp = await SharedPreferences.getInstance();
+    setState(() {
+      userName = sp.getString('FULLNAME') ?? "No Name";
+      userRole = sp.getString('ROLE') ?? "No Role";
+    });
+  }
+
+  // Function for Logout
+  Future<void> _handleLogout() async {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(
+            "Logout Confirmation",
+            style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+          ),
+          content: Text(
+            "Do you really want to logout?",
+            style: GoogleFonts.poppins(),
+          ),
+          actions: [
+            TextButton(
+              child: Text("No", style: GoogleFonts.poppins(color: Colors.grey)),
+              onPressed: () => Navigator.pop(context),
+            ),
+            TextButton(
+              child: Text("Yes", style: GoogleFonts.poppins(color: Colors.red)),
+              onPressed: () async {
+                final sp = await SharedPreferences.getInstance();
+                await sp.clear(); // delete all data in SharedPreferences
+
+                if (!mounted) return;
+                // push to login screen and remove all previous routes
+                Navigator.pushAndRemoveUntil(
+                  // ignore: use_build_context_synchronously
+                  context,
+                  MaterialPageRoute(builder: (context) => const LoginUser()),
+                  (route) => false,
+                );
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      key: _scaffoldKey, // 2. Assign the Key to the Scaffold
+      key: _scaffoldKey,
       backgroundColor: backgroundGrey,
-
-      // 3. Define the Drawer Widget
       drawer: Drawer(
         child: ListView(
           padding: EdgeInsets.zero,
@@ -38,13 +97,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
             UserAccountsDrawerHeader(
               decoration: BoxDecoration(color: primaryBlue),
               accountName: Text(
-                "Teacher Name",
+                userName,
                 style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
               ),
-              accountEmail: Text("Class Teacher", style: GoogleFonts.poppins()),
+              accountEmail: Text(userRole, style: GoogleFonts.poppins()),
               currentAccountPicture: const CircleAvatar(
                 backgroundColor: Colors.white,
-                child: Icon(Icons.person, color: Colors.black),
+                child: Icon(Icons.person, color: Colors.black, size: 40),
               ),
             ),
             ListTile(
@@ -120,17 +179,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             const Divider(),
             ListTile(
-              leading: const Icon(Icons.logout),
-              title: Text("Logout", style: GoogleFonts.poppins()),
-              onTap: () {},
+              leading: const Icon(Icons.logout, color: Colors.red),
+              title: Text(
+                "Logout",
+                style: GoogleFonts.poppins(
+                  color: Colors.red,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              onTap: _handleLogout,
             ),
           ],
         ),
       ),
-
       body: Stack(
         children: [
-          // --- Layer 1: Blue Background Header ---
           Container(
             height: 240,
             width: double.infinity,
@@ -142,8 +205,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
           ),
-
-          // --- Layer 2: Scrollable Content ---
           SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -151,22 +212,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 10),
-
-                  // --- Custom App Bar ---
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // 4. Update the Menu Icon to Open the Drawer
                       IconButton(
                         icon: const Icon(
                           Icons.menu,
                           color: Colors.white,
                           size: 28,
                         ),
-                        onPressed: () {
-                          // This line opens the drawer
-                          _scaffoldKey.currentState?.openDrawer();
-                        },
+                        onPressed: () =>
+                            _scaffoldKey.currentState?.openDrawer(),
                       ),
                       Column(
                         children: [
@@ -179,7 +235,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                           ),
                           Text(
-                            "Hight School",
+                            "High School",
                             style: GoogleFonts.poppins(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
@@ -206,10 +262,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 24),
-
-                  // --- Teacher Profile Card ---
+                  // Teacher Profile Card
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
@@ -231,14 +285,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                "Teacher Name",
+                                userName,
                                 style: GoogleFonts.poppins(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
                                 ),
                               ),
                               Text(
-                                "Class Teacher",
+                                userRole,
                                 style: GoogleFonts.poppins(
                                   color: Colors.grey,
                                   fontSize: 14,
@@ -249,8 +303,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                         const CircleAvatar(
                           radius: 25,
-                          backgroundColor:
-                              Colors.black, // Placeholder for image
+                          backgroundColor: Colors.black,
                           child: Icon(
                             Icons.person,
                             color: Colors.white,
@@ -260,10 +313,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 20),
-
-                  // --- Stats Row (Teachers / Attendance) ---
                   Row(
                     children: [
                       Expanded(
@@ -285,10 +335,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 24),
-
-                  // --- Latest Admission Section ---
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -303,8 +350,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ],
                   ),
                   const SizedBox(height: 16),
-
-                  // Horizontal List of Avatars
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
@@ -317,10 +362,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 24),
-
-                  // --- Absent Students Section ---
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -351,14 +393,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ],
                   ),
                   const SizedBox(height: 16),
-
-                  // Vertical List
                   _buildStudentListItem("Neat Tina", "Grade 10"),
                   _buildStudentListItem("Reun Rin", "Grade 10"),
                   _buildStudentListItem("Rom Sarun", "Grade 10"),
                   _buildStudentListItem("Yum Danet", "Grade 10"),
-
-                  const SizedBox(height: 30), // Bottom padding
+                  const SizedBox(height: 30),
                 ],
               ),
             ),
@@ -368,7 +407,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // --- Helper Widgets ---
   Widget _buildStatCard({
     required Color color,
     required String title,

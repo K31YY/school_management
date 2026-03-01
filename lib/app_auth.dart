@@ -15,7 +15,7 @@ class AppAuth extends StatelessWidget {
           return Center(child: CircularProgressIndicator());
         }
         if (data.hasData) {
-          return const AppDashboard();
+          return const AdminDashboard();
         }
         return const LoginUser();
       },

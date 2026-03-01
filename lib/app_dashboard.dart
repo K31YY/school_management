@@ -8,14 +8,14 @@ import 'package:ungthoung_app/menu/views_teacher.dart';
 import 'package:ungthoung_app/notification_screen.dart';
 import 'package:ungthoung_app/teachers/teacher.class.dart';
 
-class AppDashboard extends StatefulWidget {
-  const AppDashboard({super.key});
+class AdminDashboard extends StatefulWidget {
+  const AdminDashboard({super.key});
 
   @override
-  State<AppDashboard> createState() => _AppDashboardState();
+  State<AdminDashboard> createState() => _AdminDashboardState();
 }
 
-class _AppDashboardState extends State<AppDashboard> {
+class _AdminDashboardState extends State<AdminDashboard> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   Future<String> _getUserName() async {

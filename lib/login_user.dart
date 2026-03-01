@@ -4,8 +4,15 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:ungthoung_app/app_colors.dart';
-import 'package:ungthoung_app/app_dashboard.dart';
+import 'package:ungthoung_app/app_dashboard.dart'; // Dashboard ទូទៅ
 import 'package:ungthoung_app/signup_user.dart';
+import 'package:ungthoung_app/students/student_dashboard.dart';
+import 'package:ungthoung_app/teachers/teacher_dashboard.dart';
+
+// កុំភ្លេច Import Dashboard ថ្មីៗដែលអ្នកបានបង្កើត
+// import 'package:ungthoung_app/admin_dashboard.dart';
+// import 'package:ungthoung_app/teacher_dashboard.dart';
+// import 'package:ungthoung_app/student_dashboard.dart';
 
 class LoginUser extends StatefulWidget {
   const LoginUser({super.key});
@@ -51,23 +58,41 @@ class _LoginUserState extends State<LoginUser> {
         if (data['success'] == true) {
           final sp = await SharedPreferences.getInstance();
 
-          // Get user info from API response and save to SharedPreferences
+          // ទាញយកព័ត៌មានពី API
           String nameFromApi = data['user']['Username'];
-          String roleFromApi = data['user']['Role'];
+          String roleFromApi = data['user']['Role']; 
+          String tokenFromApi = data['token'];
 
+          // រក្សាទុកក្នុង SharedPreferences
           await sp.setString('FULLNAME', nameFromApi);
           await sp.setString('ROLE', roleFromApi);
-          await sp.setString('TOKEN', data['token']);
+          await sp.setString('TOKEN', tokenFromApi);
 
           if (!mounted) return;
 
           EasyLoading.showSuccess('Login successful!');
 
-          // Navigate to dashboard after successful login
+          // --- ផ្នែកបន្ថែមលក្ខខណ្ឌប្តូរ Dashboard តាម Role ---
+          Widget nextScreen;
+
+          // កែសម្រួលពាក្យក្នុង "" ឱ្យត្រូវតាម Database របស់អ្នក (ឧទាហរណ៍៖ Admin ឬ admin)
+          if (roleFromApi == 'Admin') {
+            nextScreen = const AdminDashboard(); // ជំនួសដោយ Class AdminDashboard របស់អ្នក
+          } else if (roleFromApi == 'Teacher') {
+            nextScreen = const TeacherDashboard(); // ជំនួសដោយ Class TeacherDashboard របស់អ្នក
+          } else if (roleFromApi == 'Student') {
+            nextScreen = const StudentDashboard(); // ជំនួសដោយ Class StudentDashboard របស់អ្នក
+          } else {
+            nextScreen = const AdminDashboard(); // បើមិនចូលលក្ខខណ្ឌខាងលើ ឱ្យទៅ Dashboard ទូទៅ
+          }
+
+          // រុញទៅកាន់ Dashboard ដែលត្រូវតាម Role
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => const AppDashboard()),
+            MaterialPageRoute(builder: (context) => nextScreen),
           );
+          // ---------------------------------------------
+          
         } else {
           EasyLoading.showError('Invalid username or password!');
         }
@@ -80,6 +105,7 @@ class _LoginUserState extends State<LoginUser> {
     }
   }
 
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -90,7 +116,6 @@ class _LoginUserState extends State<LoginUser> {
           child: Column(
             children: [
               const SizedBox(height: 80),
-              // Logo or Image
               const Icon(Icons.school, size: 100, color: Color(0xFF4A5BF6)),
               const SizedBox(height: 20),
               const Text(
@@ -166,20 +191,17 @@ class _LoginUserState extends State<LoginUser> {
                   ),
                 ),
               ),
-              SizedBox(height: 25),
-              // Forgot Password
-              Text(
+              const SizedBox(height: 25),
+              const Text(
                 "Forgot Password?",
-                style: TextStyle(
-                  color: Colors.blue,
-                ),
+                style: TextStyle(color: Colors.blue),
               ),
-              SizedBox(height: 50),
+              const SizedBox(height: 50),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
-                  Text("Don't have an account?"),
-                  SizedBox(width: 5),
+                  const Text("Don't have an account?"),
+                  const SizedBox(width: 5),
                   TextButton(
                     onPressed: () {
                       Navigator.push(
@@ -189,12 +211,9 @@ class _LoginUserState extends State<LoginUser> {
                         ),
                       );
                     },
-                    child: Text(
-                      // condition ? expr1 : expr2;
+                    child: const Text(
                       "Sign Up",
-                      style: TextStyle(
-                        color: Colors.blue,
-                      ),
+                      style: TextStyle(color: Colors.blue),
                     ),
                   ),
                 ],
