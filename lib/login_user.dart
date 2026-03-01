@@ -6,6 +6,9 @@ import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:ungthoung_app/app_colors.dart';
 import 'package:ungthoung_app/app_dashboard.dart';
 import 'package:ungthoung_app/signup_user.dart';
+import 'package:ungthoung_app/students/student_dashboard.dart';
+import 'package:ungthoung_app/teachers/teacher_dashboard.dart';
+
 
 class LoginUser extends StatefulWidget {
   const LoginUser({super.key});
@@ -51,23 +54,41 @@ class _LoginUserState extends State<LoginUser> {
         if (data['success'] == true) {
           final sp = await SharedPreferences.getInstance();
 
-          // Get user info from API response and save to SharedPreferences
+          // Get user info from API response
           String nameFromApi = data['user']['Username'];
-          String roleFromApi = data['user']['Role'];
+          String roleFromApi = data['user']['Role']; 
+          String tokenFromApi = data['token'];
 
+          // Save user info to SharedPreferences
           await sp.setString('FULLNAME', nameFromApi);
           await sp.setString('ROLE', roleFromApi);
-          await sp.setString('TOKEN', data['token']);
+          await sp.setString('TOKEN', tokenFromApi);
 
           if (!mounted) return;
 
           EasyLoading.showSuccess('Login successful!');
 
-          // Navigate to dashboard after successful login
+          // Add logic to navigate to different dashboards based on user role
+          Widget nextScreen;
+
+          // Update this logic to match your actual role values from the API
+          if (roleFromApi == 'Admin') {
+            nextScreen = const AdminDashboard(); 
+          } else if (roleFromApi == 'Teacher') {
+            nextScreen = const TeacherDashboard();
+          } else if (roleFromApi == 'Student') {
+            nextScreen = const StudentDashboard();
+          } else {
+            nextScreen = const AdminDashboard();
+          }
+
+          // push replacement to prevent going back to login screen
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => const AppDashboard()),
+            MaterialPageRoute(builder: (context) => nextScreen),
           );
+          // ---------------------------------------------
+          
         } else {
           EasyLoading.showError('Invalid username or password!');
         }
@@ -80,6 +101,7 @@ class _LoginUserState extends State<LoginUser> {
     }
   }
 
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -90,7 +112,6 @@ class _LoginUserState extends State<LoginUser> {
           child: Column(
             children: [
               const SizedBox(height: 80),
-              // Logo or Image
               const Icon(Icons.school, size: 100, color: Color(0xFF4A5BF6)),
               const SizedBox(height: 20),
               const Text(
@@ -165,20 +186,17 @@ class _LoginUserState extends State<LoginUser> {
                   ),
                 ),
               ),
-              SizedBox(height: 25),
-              // Forgot Password
-              Text(
+              const SizedBox(height: 25),
+              const Text(
                 "Forgot Password?",
-                style: TextStyle(
-                  color: Colors.blue,
-                ),
+                style: TextStyle(color: Colors.blue),
               ),
-              SizedBox(height: 50),
+              const SizedBox(height: 50),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
-                  Text("Don't have an account?"),
-                  SizedBox(width: 5),
+                  const Text("Don't have an account?"),
+                  const SizedBox(width: 5),
                   TextButton(
                     onPressed: () {
                       Navigator.push(
@@ -188,12 +206,9 @@ class _LoginUserState extends State<LoginUser> {
                         ),
                       );
                     },
-                    child: Text(
-                      // condition ? expr1 : expr2;
+                    child: const Text(
                       "Sign Up",
-                      style: TextStyle(
-                        color: Colors.blue,
-                      ),
+                      style: TextStyle(color: Colors.blue),
                     ),
                   ),
                 ],
