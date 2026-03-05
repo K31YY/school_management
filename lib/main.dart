@@ -1,24 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ungthoung_app/app_colors.dart';
-
-// Make sure these match your exact file names!
-import 'package:ungthoung_app/login_user.dart';
 import 'package:ungthoung_app/app_dashboard.dart';
+import 'package:ungthoung_app/login_user.dart';
+
+import 'package:ungthoung_app/students/student_dashboard.dart';
+import 'package:ungthoung_app/teachers/teacher_dashboard.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Initialize Firebase (required for signup_user.dart and app_auth.dart)
+  await Firebase.initializeApp();
+
+  String? userRole;
   bool isLoggedIn = false;
 
   try {
-    // Read SharedPreferences safely
     final sp = await SharedPreferences.getInstance();
-    final String? token = sp.getString('TOKEN');
+    final String? token = sp.getString(
+      'TOKEN',
+    ); // Fixed: was 'token', must match 'TOKEN' saved in login_user.dart
+    userRole = sp.getString('ROLE');
 
-    // If we have a token, skip login and go to dashboard
     if (token != null && token.isNotEmpty) {
       isLoggedIn = true;
     }
@@ -27,7 +34,7 @@ Future<void> main() async {
   }
 
   configLoading();
-  runApp(MyApp(isLoggedIn: isLoggedIn));
+  runApp(MyApp(isLoggedIn: isLoggedIn, role: userRole));
 }
 
 void configLoading() {
@@ -48,16 +55,16 @@ void configLoading() {
 
 class MyApp extends StatelessWidget {
   final bool isLoggedIn;
+  final String? role;
 
-  const MyApp({super.key, required this.isLoggedIn});
+  const MyApp({super.key, required this.isLoggedIn, this.role});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'BTB212 App',
-      // The routing magic happens right here:
-      home: isLoggedIn ? const AdminDashboard() : const LoginUser(),
+      home: _getHome(),
       builder: EasyLoading.init(),
       theme: ThemeData.light().copyWith(
         appBarTheme: const AppBarTheme(
@@ -68,5 +75,21 @@ class MyApp extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Widget _getHome() {
+    if (!isLoggedIn || role == null) {
+      return const LoginUser();
+    }
+    switch (role?.toLowerCase()) {
+      case 'admin':
+        return const AdminDashboard();
+      case 'teacher':
+        return const TeacherDashboard();
+      case 'student':
+        return const StudentDashboard();
+      default:
+        return const LoginUser();
+    }
   }
 }

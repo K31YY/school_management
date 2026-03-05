@@ -1,11 +1,14 @@
+// ignore_for_file: deprecated_member_use, use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:ungthoung_app/login_user.dart'; // កុំភ្លេចឆែកឈ្មោះ File នេះ
 import 'package:ungthoung_app/menu/change_password.dart';
 import 'package:ungthoung_app/students/my_result.dart';
 import 'package:ungthoung_app/students/stu_absent.dart';
 import 'package:ungthoung_app/students/stu_attandance.dart';
 import 'package:ungthoung_app/students/stu_class.dart';
-import 'package:ungthoung_app/teachers/teacher.class.dart';
 
 void main() {
   runApp(const StudentDashboard());
@@ -13,13 +16,6 @@ void main() {
 
 class StudentDashboard extends StatefulWidget {
   const StudentDashboard({super.key});
-
-  String getGreeting() {
-    int hour = DateTime.now().hour;
-    if (hour >= 12 && hour < 17) return 'Good Afternoon!';
-    if (hour >= 17 && hour <= 24) return 'Good Evening!';
-    return 'Good Morning!';
-  }
 
   @override
   State<StudentDashboard> createState() => _StudentDashboardState();
@@ -31,15 +27,48 @@ class _StudentDashboardState extends State<StudentDashboard> {
     return MaterialApp(
       title: 'SchoolApp',
       theme: ThemeData(primarySwatch: Colors.blue, fontFamily: 'KantumruyPro'),
-      home: HomeScreen(),
+      home: const HomeScreen(), // ប្តូរទៅជា const HomeScreen
       debugShowCheckedModeBanner: false,
     );
   }
 }
 
-class HomeScreen extends StatelessWidget {
-  HomeScreen({super.key});
+// ប្តូរ HomeScreen ទៅជា StatefulWidget ដើម្បីទាញទិន្នន័យឈ្មោះបាន
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  // --- ផ្នែកទាញទិន្នន័យឈ្មោះ (ដូច TeacherDashboard) ---
+  String userName = "Loading...";
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    final sp = await SharedPreferences.getInstance();
+    setState(() {
+      // ប្រសិនបើក្នុង Login អ្នករក្សាទុក Key ផ្សេង (ឧទាហរណ៍ 'name') សូមប្តូរ 'FULLNAME' នេះចេញ
+      userName = sp.getString('FULLNAME') ?? "No Name";
+    });
+  }
+
+  String getGreeting() {
+    int hour = DateTime.now().hour;
+    if (hour >= 12 && hour < 17) return 'Good Afternoon!';
+    if (hour >= 17 && hour <= 24) return 'Good Evening!';
+    return 'Good Morning!';
+  }
+  // ------------------------------------------------
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -52,10 +81,13 @@ class HomeScreen extends StatelessWidget {
             UserAccountsDrawerHeader(
               decoration: const BoxDecoration(color: Color(0xFF4A5BF6)),
               accountName: Text(
-                "Teacher Name",
+                userName, // បង្ហាញឈ្មោះពិតនៅទីនេះ
                 style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
               ),
-              accountEmail: Text("Class Teacher", style: GoogleFonts.poppins()),
+              accountEmail: Text(
+                "Student Account",
+                style: GoogleFonts.poppins(),
+              ),
               currentAccountPicture: const CircleAvatar(
                 backgroundColor: Colors.white,
                 child: Icon(Icons.person, color: Colors.black),
@@ -79,9 +111,7 @@ class HomeScreen extends StatelessWidget {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => const MyTimeClassroomScreen(),
-                  ),
+                  MaterialPageRoute(builder: (context) => const StuClass()),
                 );
               },
             ),
@@ -123,14 +153,18 @@ class HomeScreen extends StatelessWidget {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.change_circle),
-              title: Text("Logout", style: GoogleFonts.poppins()),
-              onTap: () {
-                Navigator.push(
+              leading: const Icon(Icons.logout, color: Colors.red),
+              title: Text(
+                "Logout",
+                style: GoogleFonts.poppins(color: Colors.red),
+              ),
+              onTap: () async {
+                final sp = await SharedPreferences.getInstance();
+                await sp.clear();
+                Navigator.pushAndRemoveUntil(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => const StudentDashboard(),
-                  ),
+                  MaterialPageRoute(builder: (context) => const LoginUser()),
+                  (route) => false,
                 );
               },
             ),
@@ -169,7 +203,6 @@ class HomeScreen extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        //const Icon(Icons.menu, color: Colors.white, size: 30),
                         IconButton(
                           icon: const Icon(
                             Icons.menu,
@@ -181,7 +214,7 @@ class HomeScreen extends StatelessWidget {
                           },
                         ),
                         const Text(
-                          'Ung Thoung Buddhist\nHight School',
+                          'Ung Thoung Buddhist\nHigh School',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: Colors.white,
@@ -189,30 +222,10 @@ class HomeScreen extends StatelessWidget {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        Stack(
-                          children: [
-                            const Icon(
-                              Icons.notifications,
-                              color: Colors.white,
-                              size: 30,
-                            ),
-                            Positioned(
-                              right: 2,
-                              top: 2,
-                              child: Container(
-                                padding: const EdgeInsets.all(2),
-                                decoration: BoxDecoration(
-                                  color: Colors.red,
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-
-                                constraints: const BoxConstraints(
-                                  minWidth: 8,
-                                  minHeight: 8,
-                                ),
-                              ),
-                            ),
-                          ],
+                        const Icon(
+                          Icons.notifications,
+                          color: Colors.white,
+                          size: 30,
                         ),
                       ],
                     ),
@@ -232,7 +245,6 @@ class HomeScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(20.0),
                 boxShadow: [
                   BoxShadow(
-                    // ignore: deprecated_member_use
                     color: Colors.black.withOpacity(0.05),
                     spreadRadius: 1,
                     blurRadius: 10,
@@ -242,18 +254,21 @@ class HomeScreen extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Good Evening',
-                          style: TextStyle(color: Colors.grey, fontSize: 16),
+                          getGreeting(),
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 16,
+                          ),
                         ),
-                        SizedBox(height: 4),
+                        const SizedBox(height: 4),
                         Text(
-                          'BBU 212SS',
-                          style: TextStyle(
+                          userName, // បង្ហាញឈ្មោះពិតនៅលើ Dashboard
+                          style: const TextStyle(
                             color: Colors.black,
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
@@ -262,9 +277,14 @@ class HomeScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-                  CircleAvatar(
+                  const CircleAvatar(
                     radius: 30,
-                    backgroundImage: AssetImage('assets/images/profile.jpg'),
+                    backgroundColor: Color(0xFFE3E6FD),
+                    child: Icon(
+                      Icons.person,
+                      size: 35,
+                      color: Color(0xFF4A5BF6),
+                    ),
                   ),
                 ],
               ),
@@ -330,25 +350,25 @@ class HomeScreen extends StatelessWidget {
                 Icons.schedule_outlined,
                 const Color(0xFFE3E6FD),
                 const Color(0xFF4A5BF6),
-                onTap: () => {
+                onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => const StuClass()),
-                  ),
+                  );
                 },
               ),
               _buildGridItem(
-                'My\nAttandance',
+                'My\nAttendance',
                 Icons.calendar_month,
                 const Color(0xFFFEF4DB),
                 const Color(0xFFFF9500),
-                onTap: () => {
+                onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => const MyAttendanceScreen(),
                     ),
-                  ),
+                  );
                 },
               ),
               _buildGridItem(
@@ -356,13 +376,13 @@ class HomeScreen extends StatelessWidget {
                 Icons.edit_note,
                 const Color(0xFFE6DFFB),
                 const Color(0xFF9059FF),
-                onTap: () => {
+                onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => const RequestForYouScreen(),
                     ),
-                  ),
+                  );
                 },
               ),
               _buildGridItem(
@@ -370,13 +390,13 @@ class HomeScreen extends StatelessWidget {
                 Icons.lock_reset,
                 const Color(0xFFD9EEFD),
                 const Color(0xFF5AC8FA),
-                onTap: () => {
+                onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => const ChangePasswordScreen(),
                     ),
-                  ),
+                  );
                 },
               ),
               _buildGridItem(
@@ -384,13 +404,14 @@ class HomeScreen extends StatelessWidget {
                 Icons.logout,
                 const Color(0xFFFEDDE4),
                 const Color(0xFFFF3B30),
-                onTap: () => {
-                  Navigator.push(
+                onTap: () async {
+                  final sp = await SharedPreferences.getInstance();
+                  await sp.clear();
+                  Navigator.pushAndRemoveUntil(
                     context,
-                    MaterialPageRoute(
-                      builder: (context) => const StudentDashboard(),
-                    ),
-                  ),
+                    MaterialPageRoute(builder: (context) => const LoginUser()),
+                    (route) => false,
+                  );
                 },
               ),
             ],
@@ -410,16 +431,8 @@ class HomeScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Color(0xFFFF6B6B),
+        color: const Color(0xFFFF6B6B),
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            // ignore: deprecated_member_use
-            color: Colors.black.withOpacity(0.05),
-            spreadRadius: 1,
-            blurRadius: 10,
-          ),
-        ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -469,16 +482,8 @@ class HomeScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Color(0xFF4CFF50),
+        color: const Color(0xFF4CFF50),
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            // ignore: deprecated_member_use
-            color: Colors.black.withOpacity(0.05),
-            spreadRadius: 1,
-            blurRadius: 10,
-          ),
-        ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -534,7 +539,6 @@ class HomeScreen extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              // ignore: deprecated_member_use
               color: Colors.black.withOpacity(0.05),
               spreadRadius: 1,
               blurRadius: 10,

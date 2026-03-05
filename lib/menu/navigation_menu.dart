@@ -115,7 +115,7 @@ class _NavigetionMenuState extends State<NavigetionMenu> {
           _buildMenuItem(
             context,
             Icons.view_list_outlined,
-            () => _NavigateTo(context, const ViewsTeacher()),
+            () => _NavigateTo(context, ViewsTeacher()),
             title: 'Views Teacher',
           ),
           _buildMenuItem(
