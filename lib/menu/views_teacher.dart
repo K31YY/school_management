@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'package:ungthoung_app/menu/add_teacher.dart';
 
 class ViewsTeacher extends StatefulWidget {
@@ -9,237 +11,205 @@ class ViewsTeacher extends StatefulWidget {
 }
 
 class _ViewsTeacherState extends State<ViewsTeacher> {
-  // Colors
-  final Color _primaryBlue = const Color(0xFF0D61FF); // Matches the header blue
-  final Color _bgGray = const Color(0xFFF0F0F0); // Light gray background
-  final Color _actionBlue = const Color(0xFF29B6F6); // Lighter blue for buttons
+  List<dynamic> _allTeachers = []; // save all data from API here
+  List<dynamic> _filteredTeachers =
+      []; // save for display after search/filter logic
+  bool _isLoading = true;
 
-  // Mock Data
-  List<Map<String, dynamic>> teachers = [
-    {
-      "name": "Teacher Name",
-      "id": "Teacher ID",
-      "isExpanded": true, // First one open by default
-    },
-    {"name": "Teacher Name", "id": "Teacher ID", "isExpanded": false},
-    {"name": "Teacher Name", "id": "Teacher ID", "isExpanded": false},
-  ];
+  // array for dropdown options (if needed in the future)
+  String _searchQuery = "";
+  String _selectedClass = "10 - A";
+  String _selectedSubject = "English";
+
+  final String apiUrl = 'http://10.0.2.2:8000/api/teachers';
+  final String bearerToken =
+      "45|ExnLDDVzgQTUgxm9lEdkkJ6ulK4r152L8ksG2JJe24a49b3a"; //
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchTeachers();
+  }
+
+  Future<void> _fetchTeachers() async {
+    setState(() => _isLoading = true);
+    try {
+      final response = await http.get(
+        Uri.parse(apiUrl),
+        headers: {
+          "Authorization": "Bearer $bearerToken",
+          "Accept": "application/json",
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> decodedData = json.decode(response.body);
+        if (decodedData['success'] == true) {
+          setState(() {
+            _allTeachers = decodedData['data'];
+            _filteredTeachers = _allTeachers; // show all data initially
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  // Function to filter teachers based on search query and dropdown selections
+  void _filterLogic() {
+    setState(() {
+      _filteredTeachers = _allTeachers.where((teacher) {
+        final name = (teacher['TeacherName'] ?? "").toString().toLowerCase();
+        final matchesSearch = name.contains(_searchQuery.toLowerCase());
+        return matchesSearch;
+      }).toList();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _bgGray,
+      backgroundColor: const Color(0xFFF2F2F7),
       appBar: AppBar(
-        backgroundColor: _primaryBlue,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            Navigator.pop(context);
-          },
+        backgroundColor: const Color(0xFF007AFF),
+        title: Center(
+          child: const Text(
+            "Teacher Lists",
+            style: TextStyle(color: Colors.white),
+          ),
         ),
-        title: const Text(
-          "Teacher Lists",
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-        centerTitle: true,
         actions: [
-          // The 'Add User' icon specific to this screen
           IconButton(
             icon: const Icon(Icons.person_add, color: Colors.white),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const AddTeacher()),
-              );
-            },
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const AddTeacher()),
+            ).then((_) => _fetchTeachers()),
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          children: [
-            // 1. Top Filters Row
-            Row(
+      body: Column(
+        children: [
+          // ១. ផ្នែក Select ថ្នាក់ និង មុខវិជ្ជា
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Row(
               children: [
-                Expanded(child: _buildDropdown(text: "10 - A")),
-                const SizedBox(width: 15),
-                Expanded(child: _buildDropdown(text: "English")),
+                Expanded(
+                  child: _buildFilterDropdown(
+                    ["10 - A", "11 - B", "12 - C"],
+                    _selectedClass,
+                    (val) {
+                      setState(() => _selectedClass = val!);
+                      _filterLogic();
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildFilterDropdown(
+                    ["English", "Math", "Khmer"],
+                    _selectedSubject,
+                    (val) {
+                      setState(() => _selectedSubject = val!);
+                      _filterLogic();
+                    },
+                  ),
+                ),
               ],
             ),
+          ),
 
-            const SizedBox(height: 20),
-
-            // 2. Search Bar
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(30),
-                border: Border.all(color: _primaryBlue),
-              ),
-              child: const TextField(
-                decoration: InputDecoration(
-                  hintText: "Search",
-                  hintStyle: TextStyle(color: Colors.grey, fontSize: 14),
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 14,
-                  ),
-                  suffixIcon: Icon(Icons.search, color: Colors.black54),
+          // ២. ផ្នែក Search
+          Padding(
+            padding: const EdgeInsets.only(left: 12, right: 12, bottom: 10),
+            child: TextField(
+              onChanged: (value) {
+                _searchQuery = value;
+                _filterLogic();
+              },
+              decoration: InputDecoration(
+                hintText: "Search",
+                prefixIcon: const Icon(Icons.search),
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding: EdgeInsets.zero,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(25),
+                  borderSide: BorderSide.none,
                 ),
               ),
             ),
+          ),
 
-            const SizedBox(height: 25),
-
-            // 3. Teacher List
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: teachers.length,
-              itemBuilder: (context, index) {
-                return _buildTeacherItem(index);
-              },
-            ),
-          ],
-        ),
+          // ៣. បញ្ជីឈ្មោះគ្រូ
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : RefreshIndicator(
+                    onRefresh: _fetchTeachers,
+                    child: _filteredTeachers.isEmpty
+                        ? const Center(child: Text("រកមិនឃើញទិន្នន័យទេ"))
+                        : ListView.builder(
+                            itemCount: _filteredTeachers.length,
+                            itemBuilder: (context, index) {
+                              final t = _filteredTeachers[index];
+                              return _buildTeacherCard(
+                                t['TeacherName'] ?? 'N/A',
+                                t['TeacherID'].toString(),
+                              );
+                            },
+                          ),
+                  ),
+          ),
+        ],
       ),
     );
   }
 
-  // --- Helper Widgets ---
-
-  Widget _buildDropdown({required String text}) {
+  // Widget សម្រាប់ Select Dropdown
+  Widget _buildFilterDropdown(
+    List<String> items,
+    String currentVal,
+    Function(String?) onChange,
+  ) {
     return Container(
-      height: 50,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _primaryBlue),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.blue.shade100),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            text,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: Colors.black87,
-            ),
-          ),
-          const Icon(
-            Icons.keyboard_arrow_down,
-            size: 20,
-            color: Colors.black87,
-          ),
-        ],
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: currentVal,
+          isExpanded: true,
+          items: items
+              .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+              .toList(),
+          onChanged: onChange,
+        ),
       ),
     );
   }
 
-  Widget _buildTeacherItem(int index) {
-    final teacher = teachers[index];
-    final bool isExpanded = teacher['isExpanded'];
-
-    return Column(
-      children: [
-        // Main Card Row
-        GestureDetector(
-          onTap: () {
-            setState(() {
-              teacher['isExpanded'] = !teacher['isExpanded'];
-            });
-          },
-          child: Container(
-            color: Colors.transparent,
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // Avatar
-                const CircleAvatar(
-                  radius: 24,
-                  backgroundColor: Color(0xFF009688), // Teal color from image
-                  child: Icon(Icons.person_4, color: Colors.white),
-                ),
-                const SizedBox(width: 15),
-
-                // Name & ID
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      teacher['name'],
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      teacher['id'],
-                      style: TextStyle(
-                        fontWeight: FontWeight.w500,
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ],
-                ),
-
-                const Spacer(),
-
-                // Expand Icon
-                Icon(
-                  isExpanded ? Icons.keyboard_arrow_down : Icons.chevron_left,
-                  color: Colors.black87,
-                ),
-              ],
-            ),
-          ),
+  Widget _buildTeacherCard(String name, String id) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(15),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      child: ListTile(
+        leading: const CircleAvatar(
+          backgroundColor: Color(0xFF00A693),
+          child: Icon(Icons.person, color: Colors.white),
         ),
-
-        // Action Buttons (Only 2 buttons for Teachers)
-        if (isExpanded)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 20, top: 5),
-            child: Row(
-              children: [
-                _buildActionButton("View Profile"),
-                const SizedBox(
-                  width: 15,
-                ), // Wider gap since there are only 2 buttons
-                _buildActionButton("View Attendance"),
-              ],
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildActionButton(String label) {
-    return Expanded(
-      child: Container(
-        height: 40, // Slightly taller than the student buttons
-        decoration: BoxDecoration(
-          color: _actionBlue,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+        title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Text("Teacher ID: $id"),
       ),
     );
   }

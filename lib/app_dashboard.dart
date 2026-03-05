@@ -165,9 +165,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   ),
                   const CircleAvatar(
                     radius: 30,
-                    backgroundImage: AssetImage(
-                      'assets/images/profile.jpg',
-                    ),
+                    backgroundImage: AssetImage('assets/images/profile.jpg'),
                   ),
                 ],
               ),
@@ -334,7 +332,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           if (label.contains('Teacher')) {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const ViewsTeacher()),
+              MaterialPageRoute(builder: (context) => ViewsTeacher()),
             );
           } else if (label.contains('Student')) {
             Navigator.push(
@@ -354,7 +352,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
           } else if (label == 'Class') {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const MyTimeClassroomScreen()),
+              MaterialPageRoute(
+                builder: (context) => const MyTimeClassroomScreen(),
+              ),
             );
           }
         },

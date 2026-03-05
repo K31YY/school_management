@@ -1,6 +1,12 @@
+// ignore_for_file: avoid_print
+
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AddTeacher extends StatefulWidget {
   const AddTeacher({super.key});
@@ -10,49 +16,49 @@ class AddTeacher extends StatefulWidget {
 }
 
 class _AddTeacherState extends State<AddTeacher> {
-  // Colors
   final Color _primaryBlue = const Color(0xFF4A5BF6);
-  final Color _bgGray = const Color(0xFFF0F0F0);
   final Color _borderColor = const Color(0xFF0D61FF);
+  final Color _bgGray = const Color(0xFFF5F5F5);
 
-  // State
-  int _selectedTabIndex = 0; // 0 = Personal Info, 1 = Professional
-  String _selectedGender = "Male"; // Default value for dropdown
-
-  // --- NEW: Image File Variable ---
+  int _selectedTabIndex = 0;
+  String _selectedGender = "Male";
   File? _imageFile;
 
-  // Controllers
-  final TextEditingController _dobController = TextEditingController();
-  final TextEditingController _startDateController = TextEditingController();
-  final TextEditingController _endDateController = TextEditingController();
+  // Controllers for TextFields
+  final TextEditingController _nameCtrl = TextEditingController();
+  final TextEditingController _phoneCtrl = TextEditingController();
+  final TextEditingController _emailCtrl = TextEditingController();
+  final TextEditingController _addressCtrl = TextEditingController();
+  final TextEditingController _dobCtrl = TextEditingController();
+  final TextEditingController _startDateCtrl = TextEditingController();
+  final TextEditingController _endDateCtrl = TextEditingController();
+  final TextEditingController _certCtrl = TextEditingController();
+  final TextEditingController _skillCtrl = TextEditingController();
 
   @override
   void dispose() {
-    _dobController.dispose();
-    _startDateController.dispose();
-    _endDateController.dispose();
+    _nameCtrl.dispose();
+    _phoneCtrl.dispose();
+    _emailCtrl.dispose();
+    _addressCtrl.dispose();
+    _dobCtrl.dispose();
+    _startDateCtrl.dispose();
+    _endDateCtrl.dispose();
+    _certCtrl.dispose();
+    _skillCtrl.dispose();
     super.dispose();
   }
 
-  // --- NEW: Logic to Pick Image ---
   Future<void> _pickImage() async {
-    final ImagePicker picker = ImagePicker();
-    final XFile? pickedFile = await picker.pickImage(
+    final pickedFile = await ImagePicker().pickImage(
       source: ImageSource.gallery,
     );
-
-    if (pickedFile != null) {
-      setState(() {
-        _imageFile = File(pickedFile.path);
-      });
-    }
+    if (pickedFile != null) setState(() => _imageFile = File(pickedFile.path));
   }
 
-  // --- Logic: Pick Date ---
   Future<void> _pickDate(
     BuildContext context,
-    TextEditingController controller,
+    TextEditingController ctrl,
   ) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -60,12 +66,87 @@ class _AddTeacherState extends State<AddTeacher> {
       firstDate: DateTime(1900),
       lastDate: DateTime(2100),
     );
-
     if (picked != null) {
-      setState(() {
-        controller.text =
-            "${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}";
+      setState(() => ctrl.text = DateFormat('yyyy-MM-dd').format(picked));
+    }
+  }
+
+  Future<void> _handleSave() async {
+    if (_nameCtrl.text.isEmpty) {
+      EasyLoading.showError("Please enter teacher name!");
+      return;
+    }
+
+    EasyLoading.show(status: 'Saving...');
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      String? token = prefs.getString('token');
+      int? userId = prefs.getInt('user_id');
+      if (token == null || token.isEmpty) {
+        EasyLoading.dismiss();
+        EasyLoading.showError("Token does not exist! Please login again.");
+        return;
+      }
+
+      // Make Multipart Request
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('http://10.0.2.2:8000/api/teachers'), // use api for emulator
+      );
+
+      // Add Headers (Authorization)
+      request.headers.addAll({
+        "Authorization": "Bearer $token",
+        "Accept": "application/json",
       });
+
+      // Add Fields
+      request.fields['UserID'] = userId?.toString() ?? "1";
+      request.fields['TeacherName'] = _nameCtrl.text;
+      request.fields['Gender'] = _selectedGender;
+      request.fields['DOB'] = _dobCtrl.text;
+      request.fields['Phone'] = _phoneCtrl.text;
+      request.fields['Email'] = _emailCtrl.text;
+      request.fields['Address'] = _addressCtrl.text;
+      request.fields['StartDate'] = _startDateCtrl.text;
+      request.fields['EndDate'] = _endDateCtrl.text;
+      request.fields['Specialty'] = _skillCtrl.text;
+      request.fields['Certificate'] = _certCtrl.text;
+
+      // Send Image if exists
+      if (_imageFile != null) {
+        request.files.add(
+          await http.MultipartFile.fromPath('Photo', _imageFile!.path),
+        );
+      }
+
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
+
+      EasyLoading.dismiss();
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        EasyLoading.showSuccess("Teacher registered successfully!");
+        if (!mounted) return;
+        Navigator.pop(context);
+      } else if (response.statusCode == 401) {
+        EasyLoading.showError(
+          "Unauthorized! Please login again.",
+        ); // For 401 Unauthorized, show specific message
+      } else if (response.statusCode == 422) {
+        // 422 Unprocessable Entity usually means validation error from server
+        print("Validation Error: ${response.body}");
+        EasyLoading.showError("Validation error occurred!");
+      } else {
+        print(
+          "Server Error: ${response.body}",
+        ); // Log server response for debugging
+        EasyLoading.showError("Server error: ${response.statusCode}");
+      }
+    } catch (e) {
+      EasyLoading.dismiss();
+      EasyLoading.showError("Failed to connect to server!");
     }
   }
 
@@ -75,250 +156,125 @@ class _AddTeacherState extends State<AddTeacher> {
       backgroundColor: _bgGray,
       appBar: AppBar(
         backgroundColor: _primaryBlue,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            Navigator.pop(context);
-          },
-        ),
         title: const Text(
           "Register Teacher",
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+        padding: const EdgeInsets.all(20),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildCustomTabBar(),
             const SizedBox(height: 25),
             _selectedTabIndex == 0
-                ? _buildPersonalInfoContent()
-                : _buildProfessionalContent(),
+                ? _buildPersonalInfo()
+                : _buildProfessionalInfo(),
           ],
         ),
       ),
     );
   }
 
-  // --- VIEW 1: Personal Info Content ---
-  Widget _buildPersonalInfoContent() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // --- UPDATED: Image Placeholder with Click Action ---
-        Center(
-          child: GestureDetector(
-            onTap: _pickImage, // Triggers image selection
-            child: Container(
-              width: 100,
-              height: 120,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                border: Border.all(color: Colors.black26),
-                borderRadius: BorderRadius.circular(4),
-                // If image exists, show it as background
-                image: _imageFile != null
-                    ? DecorationImage(
-                        image: FileImage(_imageFile!),
-                        fit: BoxFit.cover,
-                      )
-                    : null,
-              ),
-              child: _imageFile == null
-                  ? Stack(
-                      children: [
-                        // Optional: Center icon for empty state
-                        Center(
-                          child: Icon(
-                            Icons.person,
-                            size: 40,
-                            color: Colors.grey[300],
-                          ),
-                        ),
-                        Positioned(
-                          bottom: 4,
-                          right: 4,
-                          child: Icon(
-                            Icons.drive_folder_upload,
-                            color: _primaryBlue,
-                            size: 24,
-                          ),
-                        ),
-                      ],
-                    )
-                  : null, // If image is selected, don't show the icons inside
+  // --- UI Components ---
+  Widget _buildCustomTabBar() {
+    return Container(
+      height: 45,
+      decoration: BoxDecoration(
+        color: Colors.grey[300],
+        borderRadius: BorderRadius.circular(25),
+      ),
+      child: Row(
+        children: [_tabItem("Personal Info", 0), _tabItem("Professional", 1)],
+      ),
+    );
+  }
+
+  Widget _tabItem(String title, int index) {
+    bool isSelected = _selectedTabIndex == index;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _selectedTabIndex = index),
+        child: Container(
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: isSelected ? _primaryBlue : Colors.transparent,
+            borderRadius: BorderRadius.circular(25),
+          ),
+          child: Text(
+            title,
+            style: TextStyle(
+              color: isSelected ? Colors.white : Colors.black,
+              fontWeight: FontWeight.bold,
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildPersonalInfo() {
+    return Column(
+      children: [
+        GestureDetector(
+          onTap: _pickImage,
+          child: Container(
+            width: 100,
+            height: 120,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border.all(color: Colors.black26),
+              image: _imageFile != null
+                  ? DecorationImage(
+                      image: FileImage(_imageFile!),
+                      fit: BoxFit.cover,
+                    )
+                  : null,
+            ),
+            child: _imageFile == null
+                ? const Icon(Icons.add_a_photo, size: 40, color: Colors.grey)
+                : null,
+          ),
+        ),
         const SizedBox(height: 20),
-
-        const Text(
-          "Information",
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-        ),
-        const SizedBox(height: 10),
-
-        _buildTextField(hint: "Full Name"),
+        _buildTextField(hint: "Full Name", controller: _nameCtrl),
         const SizedBox(height: 15),
-
-        _buildDropdownField(),
+        _buildDropdown(),
         const SizedBox(height: 15),
-
         _buildTextField(
-          hint: "Date of Birth (YYYY-MM-DD)",
-          icon: Icons.schedule,
-          controller: _dobController,
-          onTap: () => _pickDate(context, _dobController),
+          hint: "DOB (YYYY-MM-DD)",
+          icon: Icons.calendar_today,
+          controller: _dobCtrl,
+          onTap: () => _pickDate(context, _dobCtrl),
         ),
         const SizedBox(height: 15),
-
-        _buildTextField(hint: "Phone Number"),
+        _buildTextField(hint: "Phone Number", controller: _phoneCtrl),
         const SizedBox(height: 15),
-
-        _buildTextField(hint: "Email (optional)"),
+        _buildTextField(hint: "Email", controller: _emailCtrl),
         const SizedBox(height: 15),
-
-        _buildTextField(hint: "Address"),
+        _buildTextField(hint: "Address", controller: _addressCtrl),
         const SizedBox(height: 15),
-
-        // Start / End Date Row
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(15),
-            border: Border.all(color: _borderColor),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: _buildDateSubField("Start", _startDateController),
-              ),
-              const SizedBox(width: 15),
-              Expanded(child: _buildDateSubField("End", _endDateController)),
-            ],
-          ),
-        ),
-
+        _buildDateRange(),
         const SizedBox(height: 30),
         _buildSaveButton(),
-        const SizedBox(height: 20),
       ],
     );
   }
 
-  // --- VIEW 2: Professional Content ---
-  Widget _buildProfessionalContent() {
+  Widget _buildProfessionalInfo() {
     return Column(
       children: [
-        _buildTextField(hint: "Certificate"),
+        _buildTextField(hint: "Certificate", controller: _certCtrl),
         const SizedBox(height: 15),
-        _buildTextField(hint: "Skills"),
+        _buildTextField(hint: "Skills", controller: _skillCtrl),
         const SizedBox(height: 50),
         _buildSaveButton(),
       ],
-    );
-  }
-
-  // --- Helper Widgets ---
-
-  Widget _buildSaveButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 50,
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: _primaryBlue,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
-          ),
-        ),
-        onPressed: () {
-          // You can access _imageFile here to upload it later
-        ("Image Selected: ${_imageFile?.path}");
-        },
-        child: const Text(
-          "Save",
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCustomTabBar() {
-    return Container(
-      height: 40,
-      decoration: BoxDecoration(
-        color: Colors.grey[300],
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.black12),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: GestureDetector(
-              onTap: () => setState(() => _selectedTabIndex = 0),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: _selectedTabIndex == 0
-                      ? _primaryBlue
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(20),
-                  border: _selectedTabIndex == 0
-                      ? Border.all(color: Colors.black)
-                      : null,
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  "Personal Info",
-                  style: TextStyle(
-                    color: _selectedTabIndex == 0
-                        ? Colors.white
-                        : Colors.black87,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: GestureDetector(
-              onTap: () => setState(() => _selectedTabIndex = 1),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: _selectedTabIndex == 1
-                      ? _primaryBlue
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(20),
-                  border: _selectedTabIndex == 1
-                      ? Border.all(color: Colors.black)
-                      : null,
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  "Professional",
-                  style: TextStyle(
-                    color: _selectedTabIndex == 1
-                        ? Colors.white
-                        : Colors.black87,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -340,7 +296,6 @@ class _AddTeacherState extends State<AddTeacher> {
         onTap: onTap,
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 20,
@@ -352,7 +307,7 @@ class _AddTeacherState extends State<AddTeacher> {
     );
   }
 
-  Widget _buildDropdownField() {
+  Widget _buildDropdown() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       decoration: BoxDecoration(
@@ -364,78 +319,58 @@ class _AddTeacherState extends State<AddTeacher> {
         child: DropdownButton<String>(
           value: _selectedGender,
           isExpanded: true,
-          hint: const Text("Gender"),
-          items: ["Male", "Female", "Other"].map((String value) {
-            return DropdownMenuItem<String>(
-              value: value,
-              child: Text(value, style: TextStyle(color: Colors.grey[700])),
-            );
-          }).toList(),
-          onChanged: (val) {
-            if (val != null) setState(() => _selectedGender = val);
-          },
+          items: [
+            "Male",
+            "Female",
+            "Other",
+          ].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
+          onChanged: (v) => setState(() => _selectedGender = v!),
         ),
       ),
     );
   }
 
-  Widget _buildDateSubField(String label, TextEditingController controller) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildDateRange() {
+    return Row(
       children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 5),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[700],
-              fontWeight: FontWeight.bold,
-            ),
+        Expanded(
+          child: _buildTextField(
+            hint: "Start",
+            icon: Icons.event,
+            controller: _startDateCtrl,
+            onTap: () => _pickDate(context, _startDateCtrl),
           ),
         ),
-        GestureDetector(
-          onTap: () => _pickDate(context, controller),
-          child: Container(
-            height: 45,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(25),
-              border: Border.all(color: _borderColor),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(left: 15),
-                    child: IgnorePointer(
-                      child: TextField(
-                        controller: controller,
-                        readOnly: true,
-                        decoration: InputDecoration(
-                          hintText: "Select Date",
-                          hintStyle: TextStyle(
-                            color: Colors.grey[400],
-                            fontSize: 13,
-                          ),
-                          border: InputBorder.none,
-                          isDense: true,
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                        style: TextStyle(color: Colors.grey[600], fontSize: 13),
-                      ),
-                    ),
-                  ),
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(right: 10),
-                  child: Icon(Icons.schedule, size: 18, color: Colors.grey),
-                ),
-              ],
-            ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _buildTextField(
+            hint: "End",
+            icon: Icons.event,
+            controller: _endDateCtrl,
+            onTap: () => _pickDate(context, _endDateCtrl),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildSaveButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 50,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _primaryBlue,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+        ),
+        onPressed: _handleSave,
+        child: const Text(
+          "SAVE DATA",
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+      ),
     );
   }
 }

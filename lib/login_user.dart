@@ -79,7 +79,7 @@ class _LoginUserState extends State<LoginUser> {
           } else if (roleFromApi == 'Student') {
             nextScreen = const StudentDashboard();
           } else {
-            nextScreen = const AdminDashboard();
+            nextScreen = const LoginUser();
           }
 
           // push replacement to prevent going back to login screen
@@ -221,3 +221,4 @@ class _LoginUserState extends State<LoginUser> {
     );
   }
 }
+
