@@ -25,7 +25,6 @@ Future<void> main() async {
       'TOKEN',
     ); // Fixed: was 'token', must match 'TOKEN' saved in login_user.dart
     userRole = sp.getString('ROLE');
-
     if (token != null && token.isNotEmpty) {
       isLoggedIn = true;
     }
@@ -63,25 +62,35 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'BTB212 App',
-      home: _getHome(),
+      title: 'Ung Thoung Buddhist High School',
+      // Using a global key for navigation is helpful for 401 interceptors later
       builder: EasyLoading.init(),
-      theme: ThemeData.light().copyWith(
+      theme: ThemeData(
+        useMaterial3: true, // Recommended for 2026 Flutter apps
+        primaryColor: AppColors.bgColor,
         appBarTheme: const AppBarTheme(
           backgroundColor: AppColors.button,
-          titleTextStyle: TextStyle(color: Colors.white, fontSize: 18),
-          systemOverlayStyle: SystemUiOverlayStyle.light,
+          centerTitle: true,
+          elevation: 0,
+          titleTextStyle: TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
           iconTheme: IconThemeData(color: Colors.white),
+          systemOverlayStyle: SystemUiOverlayStyle.light,
         ),
       ),
+      home: _getHome(),
     );
   }
 
   Widget _getHome() {
-    if (!isLoggedIn || role == null) {
-      return const LoginUser();
-    }
-    switch (role?.toLowerCase()) {
+    if (!isLoggedIn) return const LoginUser();
+
+    final normalizedRole = role?.toLowerCase().trim();
+
+    switch (normalizedRole) {
       case 'admin':
         return const AdminDashboard();
       case 'teacher':
@@ -89,6 +98,7 @@ class MyApp extends StatelessWidget {
       case 'student':
         return const StudentDashboard();
       default:
+        // If logged in but role is missing/corrupt, force re-login
         return const LoginUser();
     }
   }

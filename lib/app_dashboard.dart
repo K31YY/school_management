@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'package:ungthoung_app/menu/assign_schedule.dart';
 import 'package:ungthoung_app/menu/navigation_menu.dart';
 import 'package:ungthoung_app/menu/report_area.dart';
 import 'package:ungthoung_app/menu/views_student.dart';
 import 'package:ungthoung_app/menu/views_teacher.dart';
 import 'package:ungthoung_app/notification_screen.dart';
-import 'package:ungthoung_app/teachers/teacher.class.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -17,6 +18,50 @@ class AdminDashboard extends StatefulWidget {
 
 class _AdminDashboardState extends State<AdminDashboard> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  // create variables to hold counts (initially 0 or loading state)
+  int _teacherCount = 0;
+  int _studentCount = 0;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchDashboardData();
+  }
+
+  // Function to fetch counts from API and update state
+  Future<void> _fetchDashboardData() async {
+    setState(() => _isLoading = true);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      String? token = prefs.getString('TOKEN');
+
+      // change URL to your actual API endpoint for dashboard counts
+      final response = await http.get(
+        Uri.parse('http://10.0.2.2:8000/api/dashboard-counts'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          _teacherCount = data['teachers'] ?? 0;
+          _studentCount = data['students'] ?? 0;
+          _isLoading = false;
+        });
+      } else {
+        debugPrint("Server Error: ${response.statusCode}");
+        setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      debugPrint("Connection Error: $e");
+      setState(() => _isLoading = false);
+    }
+  }
 
   Future<String> _getUserName() async {
     final sp = await SharedPreferences.getInstance();
@@ -36,25 +81,25 @@ class _AdminDashboardState extends State<AdminDashboard> {
       key: _scaffoldKey,
       backgroundColor: const Color(0xFFF4F6F8),
       drawer: const NavigetionMenu(),
-      body: FutureBuilder<String>(
-        future: _getUserName(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      body: RefreshIndicator(
+        onRefresh: _fetchDashboardData,
+        child: FutureBuilder<String>(
+          future: _getUserName(),
+          builder: (context, snapshot) {
+            String name = snapshot.data ?? "Guest User";
+            String welcomeMessage = getGreeting();
 
-          String name = snapshot.data ?? "Guest User";
-          String welcomeMessage = getGreeting();
-
-          return SingleChildScrollView(
-            child: Column(
-              children: [
-                _buildHeader(context, name, welcomeMessage),
-                _buildBody(context),
-              ],
-            ),
-          );
-        },
+            return SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: Column(
+                children: [
+                  _buildHeader(context, name, welcomeMessage),
+                  _buildBody(context),
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -99,7 +144,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 20,
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -148,7 +193,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           greetingText,
                           style: const TextStyle(
                             color: Colors.grey,
-                            fontSize: 16,
+                            fontSize: 14,
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -156,7 +201,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           displayName,
                           style: const TextStyle(
                             color: Colors.black,
-                            fontSize: 22,
+                            fontSize: 20,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -186,7 +231,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
               Expanded(
                 child: _buildInfoCard(
                   'Teachers',
-                  '10',
+                  _isLoading ? '...' : '$_teacherCount',
                   Icons.groups,
                   const Color(0xFFE3E6FD),
                   const Color(0xFF4A5BF6),
@@ -196,7 +241,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
               Expanded(
                 child: _buildInfoCard(
                   'Students',
-                  '100',
+                  _isLoading ? '...' : '$_studentCount',
                   Icons.school,
                   const Color(0xFFE3E6FD),
                   const Color(0xFF4A5BF6),
@@ -285,13 +330,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
             children: [
               Text(
                 title,
-                style: const TextStyle(color: Colors.grey, fontSize: 14),
+                style: const TextStyle(color: Colors.grey, fontSize: 13),
               ),
               const SizedBox(height: 8),
               Text(
                 count,
                 style: const TextStyle(
-                  fontSize: 24,
+                  fontSize: 22,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -322,7 +367,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
-          // ignore: deprecated_member_use
           BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
         ],
       ),
@@ -349,28 +393,21 @@ class _AdminDashboardState extends State<AdminDashboard> {
               context,
               MaterialPageRoute(builder: (context) => const AssignSchedule()),
             );
-          } else if (label == 'Class') {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const MyTimeClassroomScreen(),
-              ),
-            );
           }
         },
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle),
-              child: Icon(icon, color: iconColor, size: 28),
+              child: Icon(icon, color: iconColor, size: 26),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             Text(
               label,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
             ),
           ],
         ),

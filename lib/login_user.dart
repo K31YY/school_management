@@ -3,12 +3,11 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
-import 'package:ungthoung_app/app_colors.dart';
+
+// Import your dashboards and other necessary files
 import 'package:ungthoung_app/app_dashboard.dart';
-import 'package:ungthoung_app/signup_user.dart';
 import 'package:ungthoung_app/students/student_dashboard.dart';
 import 'package:ungthoung_app/teachers/teacher_dashboard.dart';
-
 
 class LoginUser extends StatefulWidget {
   const LoginUser({super.key});
@@ -22,20 +21,23 @@ class _LoginUserState extends State<LoginUser> {
   final TextEditingController _passwordController = TextEditingController();
   bool _isObscure = true;
 
-  // Login to API Laravel
+  // information for API connection
+  final Color _primaryColor = const Color(0xFF4A5BF6);
+
   Future<void> loginUser() async {
-    String username = _usernameController.text.trim();
+    String loginKey = _usernameController.text.trim();
     String password = _passwordController.text.trim();
 
-    if (username.isEmpty || password.isEmpty) {
-      EasyLoading.showError('please fill in all fields!');
+    if (loginKey.isEmpty || password.isEmpty) {
+      EasyLoading.showError('Please enter both username and password!');
       return;
     }
 
+    // URL ទៅកាន់ Laravel API
     final url = Uri.parse('http://10.0.2.2:8000/api/login');
 
     try {
-      EasyLoading.show(status: 'Login...');
+      EasyLoading.show(status: 'Logging in...');
 
       final response = await http.post(
         url,
@@ -43,7 +45,7 @@ class _LoginUserState extends State<LoginUser> {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        body: jsonEncode({'Username': username, 'Password': password}),
+        body: jsonEncode({'LoginKey': loginKey, 'Password': password}),
       );
 
       EasyLoading.dismiss();
@@ -53,91 +55,88 @@ class _LoginUserState extends State<LoginUser> {
 
         if (data['success'] == true) {
           final sp = await SharedPreferences.getInstance();
-
-          // Get user info from API response
-          String nameFromApi = data['user']['Username'];
-          String roleFromApi = data['user']['Role']; 
-          String tokenFromApi = data['token'];
-
-          // Save user info to SharedPreferences
-          await sp.setString('FULLNAME', nameFromApi);
-          await sp.setString('ROLE', roleFromApi);
-          await sp.setString('TOKEN', tokenFromApi);
-
-          if (!mounted) return;
-
-          EasyLoading.showSuccess('Login successful!');
-
-          // Add logic to navigate to different dashboards based on user role
-          Widget nextScreen;
-
-          // Update this logic to match your actual role values from the API
-          if (roleFromApi == 'Admin') {
-            nextScreen = const AdminDashboard(); 
-          } else if (roleFromApi == 'Teacher') {
-            nextScreen = const TeacherDashboard();
-          } else if (roleFromApi == 'Student') {
-            nextScreen = const StudentDashboard();
-          } else {
-            nextScreen = const LoginUser();
+          if (data['user'] != null && data['user']['id'] != null) {
+            int uId = int.parse(data['user']['id'].toString());
+            await sp.setInt('USER_ID_KEY', uId); // Key នេះប្រើក្នុង AddTeacher
+            debugPrint("Saved USER_ID: $uId");
           }
 
-          // push replacement to prevent going back to login screen
+          // រក្សាទុក Token និង Role សម្រាប់ប្រើប្រាស់បន្ត
+          await sp.setString('TOKEN', data['token'] ?? "");
+          await sp.setString('ROLE', data['role'] ?? "");
+          await sp.setString('FULLNAME', data['display_name'] ?? "User");
+
+          EasyLoading.showSuccess('Welcome!');
+
+          // បែងចែក Dashboard តាម Role
+          String role = data['role']?.toString().toLowerCase() ?? "";
+          Widget nextScreen;
+
+          if (role == 'admin') {
+            nextScreen = const AdminDashboard();
+          } else if (role == 'teacher') {
+            nextScreen = const TeacherDashboard();
+          } else {
+            nextScreen = const StudentDashboard();
+          }
+
+          if (!mounted) return;
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (context) => nextScreen),
           );
-          // ---------------------------------------------
-          
         } else {
-          EasyLoading.showError('Invalid username or password!');
+          EasyLoading.showError(data['message'] ?? 'Login failed!');
         }
       } else {
-        EasyLoading.showError('Login failed!');
+        EasyLoading.showError('Invalid Username or Password!');
       }
     } catch (e) {
       EasyLoading.dismiss();
-      EasyLoading.showError('An error occurred during login!');
+      debugPrint("Login Error: $e");
+      EasyLoading.showError('Failed to connect to Server!');
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(25.0),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(30.0),
           child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const SizedBox(height: 80),
-              const Icon(Icons.school, size: 100, color: Color(0xFF4A5BF6)),
-              const SizedBox(height: 20),
+              // Logo
+              Icon(Icons.school_rounded, size: 100, color: _primaryColor),
+              const SizedBox(height: 10),
               const Text(
                 "Ung Thoung Buddhist",
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2D3142),
+                ),
+                textAlign: TextAlign.center,
               ),
               const Text(
-                "High School",
-                style: TextStyle(
-                  color: Colors.grey,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
+                "High School Management System",
+                style: TextStyle(color: Colors.grey),
               ),
-              const SizedBox(height: 40),
+              const SizedBox(height: 50),
 
               // Username Field
               TextField(
                 controller: _usernameController,
                 decoration: InputDecoration(
-                  filled: true,
-                  fillColor: AppColors.blue,
-                  labelText: "Username",
+                  labelText: "Username or Email",
                   prefixIcon: const Icon(Icons.person_outline),
+                  filled: true,
+                  fillColor: Colors.grey[100],
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(15),
+                    borderSide: BorderSide.none,
                   ),
                 ),
               ),
@@ -148,8 +147,6 @@ class _LoginUserState extends State<LoginUser> {
                 controller: _passwordController,
                 obscureText: _isObscure,
                 decoration: InputDecoration(
-                  filled: true,
-                  fillColor: AppColors.blue,
                   labelText: "Password",
                   prefixIcon: const Icon(Icons.lock_outline),
                   suffixIcon: IconButton(
@@ -158,12 +155,15 @@ class _LoginUserState extends State<LoginUser> {
                     ),
                     onPressed: () => setState(() => _isObscure = !_isObscure),
                   ),
+                  filled: true,
+                  fillColor: Colors.grey[100],
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(15),
+                    borderSide: BorderSide.none,
                   ),
                 ),
               ),
-              const SizedBox(height: 30),
+              const SizedBox(height: 40),
 
               // Login Button
               SizedBox(
@@ -172,10 +172,11 @@ class _LoginUserState extends State<LoginUser> {
                 child: ElevatedButton(
                   onPressed: loginUser,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4A5BF6),
+                    backgroundColor: _primaryColor,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(15),
                     ),
+                    elevation: 2,
                   ),
                   child: const Text(
                     "LOGIN",
@@ -187,33 +188,6 @@ class _LoginUserState extends State<LoginUser> {
                   ),
                 ),
               ),
-              const SizedBox(height: 25),
-              const Text(
-                "Forgot Password?",
-                style: TextStyle(color: Colors.blue),
-              ),
-              const SizedBox(height: 50),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  const Text("Don't have an account?"),
-                  const SizedBox(width: 5),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const SignupUser(),
-                        ),
-                      );
-                    },
-                    child: const Text(
-                      "Sign Up",
-                      style: TextStyle(color: Colors.blue),
-                    ),
-                  ),
-                ],
-              ),
             ],
           ),
         ),
@@ -221,4 +195,3 @@ class _LoginUserState extends State<LoginUser> {
     );
   }
 }
-

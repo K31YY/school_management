@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:ungthoung_app/menu/add_student.dart';
 
 class ViewsStudent extends StatefulWidget {
   const ViewsStudent({super.key});
@@ -8,212 +11,202 @@ class ViewsStudent extends StatefulWidget {
 }
 
 class _ViewsStudentState extends State<ViewsStudent> {
-  // Colors
-  final Color _primaryBlue = const Color(0xFF4A5BF6);
-  final Color _bgGray = const Color(0xFFF0F0F0);
-  final Color _actionBlue = const Color(0xFF29B6F6); // Lighter blue for buttons
+  List<dynamic> _allStudents = [];
+  List<dynamic> _filteredStudents = [];
+  bool _isLoading = true;
+  int? _expandedIndex;
 
-  // Mock Data
-  // We keep track of the 'isExpanded' state for each student here
-  List<Map<String, dynamic>> students = [
-    {
-      "name": "Student Name",
-      "id": "Student ID",
-      "isExpanded": true, // First one is open in the design
-    },
-    {"name": "Student Name", "id": "Student ID", "isExpanded": false},
-    {"name": "Student Name", "id": "Student ID", "isExpanded": false},
-    {"name": "Student Name", "id": "Student ID", "isExpanded": false},
-  ];
+  String _searchQuery = "";
+
+  final String apiUrl = 'http://10.0.2.2:8000/api/students';
+  final String bearerToken =
+      "45|ExnLDDVzgQTUgxm9lEdkkJ6ulK4r152L8ksG2JJe24a49b3a";
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchStudents();
+  }
+
+  Future<void> _fetchStudents() async {
+    setState(() => _isLoading = true);
+    try {
+      final response = await http.get(
+        Uri.parse(apiUrl),
+        headers: {
+          "Authorization": "Bearer $bearerToken",
+          "Accept": "application/json",
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> decodedData = json.decode(response.body);
+        if (decodedData['success'] == true) {
+          setState(() {
+            _allStudents = decodedData['data'];
+            _filteredStudents = _allStudents;
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  void _filterLogic() {
+    setState(() {
+      _filteredStudents = _allStudents.where((student) {
+        final name = (student['StuName'] ?? "").toString().toLowerCase();
+        return name.contains(_searchQuery.toLowerCase());
+      }).toList();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _bgGray,
+      backgroundColor: const Color(0xFFF2F2F7),
       appBar: AppBar(
-        backgroundColor: _primaryBlue,
+        backgroundColor: const Color(0xFF0066FF),
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            Navigator.pop(context);
-          },
+          onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           "Student Lists",
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(
+              Icons.person_add_alt_1,
+              color: Colors.white,
+              size: 28,
+            ),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AddStudent()),
+              ).then((_) => _fetchStudents());
+            },
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          children: [
-            // 1. Top Filters Row
-            Row(
+      body: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            child: Column(
               children: [
-                Expanded(child: _buildDropdown(text: "10A - English")),
-                const SizedBox(width: 15),
-                Expanded(child: _buildDropdown(text: "2025-2026")),
+                const SizedBox(height: 15),
+                TextField(
+                  onChanged: (val) {
+                    _searchQuery = val;
+                    _filterLogic();
+                  },
+                  decoration: InputDecoration(
+                    hintText: "Search",
+                    suffixIcon: const Icon(Icons.search),
+                    fillColor: Colors.white,
+                    filled: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(30),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
               ],
             ),
-
-            const SizedBox(height: 20),
-
-            // 2. Search Bar
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(30),
-                border: Border.all(color: _primaryBlue),
-              ),
-              child: const TextField(
-                decoration: InputDecoration(
-                  hintText: "Search",
-                  hintStyle: TextStyle(color: Colors.grey, fontSize: 14),
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 14,
-                  ),
-                  suffixIcon: Icon(Icons.search, color: Colors.black54),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 25),
-
-            // 3. Student List
-            ListView.builder(
-              shrinkWrap: true, // Important when inside SingleChildScrollView
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: students.length,
-              itemBuilder: (context, index) {
-                return _buildStudentItem(index);
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // --- Helper Widgets ---
-
-  Widget _buildDropdown({required String text}) {
-    return Container(
-      height: 50,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _primaryBlue),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            text,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: Colors.black87,
-            ),
           ),
-          const Icon(
-            Icons.keyboard_arrow_down,
-            size: 20,
-            color: Colors.black87,
+
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : RefreshIndicator(
+                    onRefresh: _fetchStudents,
+                    child: ListView.builder(
+                      itemCount: _filteredStudents.length,
+                      itemBuilder: (context, index) {
+                        final student = _filteredStudents[index];
+                        bool isExpanded = _expandedIndex == index;
+                        return _buildStudentItem(student, index, isExpanded);
+                      },
+                    ),
+                  ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildStudentItem(int index) {
-    final student = students[index];
-    final bool isExpanded = student['isExpanded'];
-
+  Widget _buildStudentItem(dynamic student, int index, bool isExpanded) {
     return Column(
       children: [
-        // The Main Card
-        GestureDetector(
-          onTap: () {
-            setState(() {
-              // Toggle expansion logic
-              // Option A: Allow multiple open ->
-              student['isExpanded'] = !student['isExpanded'];
-
-              // Option B: Only one open at a time (Accordion style) ->
-              // for (var s in students) s['isExpanded'] = false;
-              // students[index]['isExpanded'] = true;
-            });
-          },
-          child: Container(
-            color: Colors.transparent, // Ensures tap area is full width
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // Avatar
-                const CircleAvatar(
-                  radius: 24,
-                  backgroundColor: Color(0xFF009688), // Teal/Green color
-                  child: Icon(Icons.person, color: Colors.white),
-                  // Use an Image.asset here for the specific vector face if you have it
-                ),
-                const SizedBox(width: 15),
-
-                // Name & ID
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      student['name'],
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      student['id'],
-                      style: TextStyle(
-                        fontWeight: FontWeight.w500,
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ],
-                ),
-
-                const Spacer(),
-
-                // Icon (Changes based on state)
-                Icon(
-                  isExpanded
-                      ? Icons.keyboard_arrow_down
-                      : Icons
-                            .chevron_left, // Matches the image style (left arrow)
-                  color: Colors.black87,
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(15),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: ListTile(
+            leading: const CircleAvatar(
+              backgroundColor: Color(0xFF0066FF),
+              child: Icon(Icons.person, color: Colors.white),
+            ),
+            title: Text(
+              student['StuName'] ?? "Student Name",
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            subtitle: Text("Student ID: ${student['StuID']}"),
+            trailing: Icon(
+              isExpanded
+                  ? Icons.keyboard_arrow_down
+                  : Icons.keyboard_arrow_left,
+            ),
+            onTap: () =>
+                setState(() => _expandedIndex = isExpanded ? null : index),
+          ),
+        ),
+        if (isExpanded)
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(12),
+                bottomRight: Radius.circular(12),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
                 ),
               ],
             ),
-          ),
-        ),
-
-        // The Action Buttons (Only visible if expanded)
-        if (isExpanded)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 20, top: 5),
+            padding: const EdgeInsets.only(
+              bottom: 12,
+              left: 16,
+              right: 16,
+              top: 8,
+            ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 _buildActionButton("View Profile"),
-                const SizedBox(width: 8),
                 _buildActionButton("Add Score"),
-                const SizedBox(width: 8),
                 _buildActionButton("View Attendance"),
               ],
             ),
@@ -223,22 +216,20 @@ class _ViewsStudentState extends State<ViewsStudent> {
   }
 
   Widget _buildActionButton(String label) {
-    return Expanded(
-      child: Container(
-        height: 36,
-        decoration: BoxDecoration(
-          color: _actionBlue,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 11, // Small font to fit 3 in a row
-            fontWeight: FontWeight.w600,
-          ),
+    return ElevatedButton(
+      onPressed: () {},
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFF29B6F6),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        elevation: 0,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
         ),
       ),
     );

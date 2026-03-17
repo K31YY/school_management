@@ -1,4 +1,13 @@
+// ignore_for_file: avoid_print, curly_braces_in_flow_control_structures, use_build_context_synchronously, unused_field
+
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 class AddStudent extends StatefulWidget {
   const AddStudent({super.key});
 
@@ -7,18 +16,124 @@ class AddStudent extends StatefulWidget {
 }
 
 class _AddStudentState extends State<AddStudent> {
-  // Colors
-  final Color _primaryBlue = Color(0xFF4A5BF6);
-  final Color _bgGray = const Color(0xFFF0F0F0);
-  final Color _borderColor = const Color(0xFF0D61FF);
+  final Color _primaryBlue = const Color(0xFF4A5BF6);
+  final Color _bgGray = const Color(0xFFF5F5F5);
 
-  // State
-  int _selectedTabIndex = 0; // 0 = Personal Info, 1 = Parent Info
+  int _selectedTabIndex = 0;
+  String _selectedGender = "Male";
+  File? _imageFile;
+  bool _isObscure = true;
+  int? _currentUserId;
 
-  // Dropdown Values
-  String? _selectedGender;
-  String? _selectedClass;
-  String? _selectedYear;
+  // Controllers
+  final TextEditingController _rollNoCtrl = TextEditingController();
+  final TextEditingController _nameKhCtrl = TextEditingController();
+  final TextEditingController _nameEnCtrl = TextEditingController();
+  final TextEditingController _phoneCtrl = TextEditingController();
+  final TextEditingController _emailCtrl = TextEditingController();
+  final TextEditingController _passwordCtrl = TextEditingController();
+  final TextEditingController _pobCtrl = TextEditingController();
+  final TextEditingController _dobCtrl = TextEditingController();
+  final TextEditingController _promotionCtrl = TextEditingController();
+  final TextEditingController _addressCtrl = TextEditingController();
+
+  final TextEditingController _fatherNameCtrl = TextEditingController();
+  final TextEditingController _fatherJobCtrl = TextEditingController();
+  final TextEditingController _motherNameCtrl = TextEditingController();
+  final TextEditingController _motherJobCtrl = TextEditingController();
+  final TextEditingController _familyContactCtrl = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserId();
+  }
+
+  Future<void> _fetchUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    int? id = prefs.getInt('USER_ID_KEY');
+
+    if (id != null) {
+      setState(() {
+        _currentUserId = id;
+        // Format for display: UTB001
+        _rollNoCtrl.text = "UTB${id.toString().padLeft(3, '0')}";
+      });
+    } else {
+      _rollNoCtrl.text = "No ID Found";
+    }
+  }
+
+  Future<void> _handleSave() async {
+    if (_nameEnCtrl.text.isEmpty ||
+        _emailCtrl.text.isEmpty ||
+        _passwordCtrl.text.isEmpty) {
+      EasyLoading.showError("Please fill all required fields!");
+      return;
+    }
+
+    EasyLoading.show(status: 'Saving...');
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      String? token = prefs.getString('TOKEN');
+
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('http://10.0.2.2:8000/api/students'),
+      );
+
+      request.headers.addAll({
+        "Authorization": "Bearer $token",
+        "Accept": "application/json",
+      });
+
+      // Mapping ALL fields to match your Laravel Controller store()
+      request.fields.addAll({
+        'UserID': _rollNoCtrl.text,
+        'StuName': _nameEnCtrl.text,
+        'StuNameKH': _nameKhCtrl.text,
+        'StuNameEN': _nameEnCtrl.text,
+        'Gender': _selectedGender,
+        'DOB': _dobCtrl.text, // Must be 'yyyy-MM-dd'
+        'POB': _pobCtrl.text,
+        'Address': _addressCtrl.text,
+        'Phone': _phoneCtrl.text,
+        'Email': _emailCtrl.text,
+        'password': _passwordCtrl.text,
+        'Promotion': _promotionCtrl.text,
+        'FatherName': _fatherNameCtrl.text,
+        'FatherJob': _fatherJobCtrl.text,
+        'MotherName': _motherNameCtrl.text,
+        'MotherJob': _motherJobCtrl.text,
+        'FamilyContact': _familyContactCtrl.text,
+        'Status': '1', // Ensure this matches your DB
+      });
+
+      if (_imageFile != null) {
+        request.files.add(
+          await http.MultipartFile.fromPath('Photo', _imageFile!.path),
+        );
+      }
+
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
+
+      EasyLoading.dismiss();
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        EasyLoading.showSuccess("Saved Successfully!");
+        Navigator.pop(context);
+      } else {
+        // If it fails, this print is critical
+        print("SERVER ERROR 422: ${response.body}");
+        EasyLoading.showError("Error: Check your logs");
+      }
+    } catch (e) {
+      EasyLoading.dismiss();
+      EasyLoading.showError("Connection failed: $e");
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,11 +141,6 @@ class _AddStudentState extends State<AddStudent> {
       backgroundColor: _bgGray,
       appBar: AppBar(
         backgroundColor: _primaryBlue,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
         title: const Text(
           "Register Student",
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
@@ -38,333 +148,203 @@ class _AddStudentState extends State<AddStudent> {
         centerTitle: true,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+        padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            // 1. Custom Tab Bar
             _buildCustomTabBar(),
-
             const SizedBox(height: 25),
-
-            // 2. Content Switching
-            _selectedTabIndex == 0
-                ? _buildPersonalInfoContent()
-                : _buildParentInfoContent(),
+            _selectedTabIndex == 0 ? _buildPersonalInfo() : _buildFamilyInfo(),
           ],
         ),
       ),
     );
   }
 
-  // --- TAB 1: Personal Info ---
-  Widget _buildPersonalInfoContent() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Image Placeholder
-        Center(
-          child: Container(
-            width: 100,
-            height: 120,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(color: Colors.black26),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Stack(
-              children: [
-                Positioned(
-                  bottom: 4,
-                  right: 4,
-                  child: Icon(
-                    Icons.drive_folder_upload,
-                    color: _primaryBlue,
-                    size: 24,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 25),
-
-        _buildTextField(hint: "Student name in khmer"),
-        const SizedBox(height: 15),
-
-        _buildTextField(hint: "Student name in English"),
-        const SizedBox(height: 15),
-
-        _buildTextField(hint: "Phone Number / Email"),
-        const SizedBox(height: 15),
-
-        // Row: Gender + Date of Birth
-        Row(
-          children: [
-            Expanded(
-              child: _buildDropdownField(
-                hint: "Gender",
-                value: _selectedGender,
-                items: ["Male", "Female"],
-                onChanged: (val) => setState(() => _selectedGender = val),
-              ),
-            ),
-            const SizedBox(width: 15),
-            Expanded(child: _buildDatePickerField(hint: "Date of Birth")),
-          ],
-        ),
-        const SizedBox(height: 15),
-
-        // Row: Class + Study Years
-        Row(
-          children: [
-            Expanded(
-              child: _buildDropdownField(
-                hint: "Class",
-                value: _selectedClass,
-                items: ["10 - A", "10 - B", "11 - A"],
-                onChanged: (val) => setState(() => _selectedClass = val),
-              ),
-            ),
-            const SizedBox(width: 15),
-            Expanded(
-              child: _buildDropdownField(
-                hint: "Study Years",
-                value: _selectedYear,
-                items: ["2024-2025", "2025-2026"],
-                onChanged: (val) => setState(() => _selectedYear = val),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 15),
-
-        _buildTextField(hint: "Promotion"),
-        const SizedBox(height: 15),
-
-        _buildTextField(hint: "Address"),
-
-        const SizedBox(height: 30),
-        _buildSaveButton(),
-        const SizedBox(height: 20),
-      ],
-    );
-  }
-
-  // --- TAB 2: Parent Info ---
-  Widget _buildParentInfoContent() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionHeader("Father's Information"),
-        _buildTextField(hint: "Full Name"),
-        const SizedBox(height: 15),
-        _buildTextField(hint: "Job Title"),
-
-        const SizedBox(height: 20),
-
-        _buildSectionHeader("Mother's Information"),
-        _buildTextField(hint: "Full Name"),
-        const SizedBox(height: 15),
-        _buildTextField(hint: "Job Title"),
-
-        const SizedBox(height: 20),
-
-        _buildSectionHeader("Contact Information"),
-        _buildTextField(hint: "Phone Number"),
-        const SizedBox(height: 15),
-        _buildTextField(hint: "Email"),
-
-        const SizedBox(height: 40),
-        _buildSaveButton(),
-        const SizedBox(height: 20),
-      ],
-    );
-  }
-
-  // --- Helper Widgets ---
-
-  Widget _buildCustomTabBar() {
-    return Container(
-      height: 40,
-      decoration: BoxDecoration(
-        color: Colors.grey[300],
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.black12),
+  Widget _buildPersonalInfo() => Column(
+    children: [
+      _buildImagePicker(),
+      const SizedBox(height: 20),
+      _buildTextField(
+        hint: "UserID",
+        controller: _rollNoCtrl,
+        readOnly: true,
+        fillColor: Colors.grey[200],
       ),
-      child: Row(
+      _buildTextField(hint: "Name (Khmer)", controller: _nameKhCtrl),
+      _buildTextField(hint: "Name (English)", controller: _nameEnCtrl),
+      _buildTextField(hint: "Email", controller: _emailCtrl),
+      _buildTextField(hint: "Password", controller: _passwordCtrl),
+      Row(
         children: [
+          Expanded(child: _buildDropdown()),
+          const SizedBox(width: 15),
           Expanded(
-            child: GestureDetector(
-              onTap: () => setState(() => _selectedTabIndex = 0),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: _selectedTabIndex == 0
-                      ? _primaryBlue
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(20),
-                  border: _selectedTabIndex == 0
-                      ? Border.all(color: Colors.black)
-                      : null,
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  "Personal Info",
-                  style: TextStyle(
-                    color: _selectedTabIndex == 0
-                        ? Colors.white
-                        : Colors.black87,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: GestureDetector(
-              onTap: () => setState(() => _selectedTabIndex = 1),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: _selectedTabIndex == 1
-                      ? _primaryBlue
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(20),
-                  border: _selectedTabIndex == 1
-                      ? Border.all(color: Colors.black)
-                      : null,
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  "Parent Info", // Changed text for this screen
-                  style: TextStyle(
-                    color: _selectedTabIndex == 1
-                        ? Colors.white
-                        : Colors.black87,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
-                ),
-              ),
+            child: _buildTextField(
+              hint: "Date of Birth",
+              controller: _dobCtrl,
+              onTap: () => _pickDate(_dobCtrl),
             ),
           ),
         ],
       ),
-    );
-  }
+      _buildTextField(hint: "Place of Birth", controller: _pobCtrl),
+      _buildTextField(hint: "Promotion", controller: _promotionCtrl),
+      _buildTextField(hint: "Address", controller: _addressCtrl),
+      const SizedBox(height: 30),
+      _buildSaveButton(),
+    ],
+  );
 
-  Widget _buildTextField({required String hint}) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: _borderColor),
-      ),
-      child: TextField(
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 20,
-            vertical: 15,
-          ),
-        ),
-      ),
-    );
-  }
+  Widget _buildFamilyInfo() => Column(
+    children: [
+      _buildTextField(hint: "Father Name", controller: _fatherNameCtrl),
+      _buildTextField(hint: "Father Job", controller: _fatherJobCtrl),
+      _buildTextField(hint: "Mother Name", controller: _motherNameCtrl),
+      _buildTextField(hint: "Mother Job", controller: _motherJobCtrl),
+      _buildTextField(hint: "Contact Number", controller: _familyContactCtrl),
+      const SizedBox(height: 30),
+      _buildSaveButton(),
+    ],
+  );
 
-  Widget _buildDropdownField({
+  // Reusing your Teacher Form UI logic
+  Widget _buildTextField({
     required String hint,
-    required String? value,
-    required List<String> items,
-    required Function(String?) onChanged,
-  }) {
-    return Container(
-      height: 52, // Fixed height to match text fields
-      padding: const EdgeInsets.symmetric(horizontal: 15),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: _borderColor),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: value,
-          isExpanded: true,
-          hint: Text(
-            hint,
-            style: TextStyle(color: Colors.grey[600], fontSize: 14),
-          ),
-          icon: const Icon(Icons.arrow_drop_down),
-          items: items.map((String item) {
-            return DropdownMenuItem<String>(
-              value: item,
-              child: Text(
-                item,
-                style: TextStyle(color: Colors.grey[800], fontSize: 14),
-              ),
-            );
-          }).toList(),
-          onChanged: onChanged,
+    IconData? icon,
+    TextEditingController? controller,
+    VoidCallback? onTap,
+    bool readOnly = false,
+    Color? fillColor,
+  }) => Container(
+    margin: const EdgeInsets.only(bottom: 15),
+    decoration: BoxDecoration(
+      color: fillColor ?? Colors.white,
+      borderRadius: BorderRadius.circular(15),
+      border: Border.all(color: Colors.grey.shade400),
+    ),
+    child: TextField(
+      controller: controller,
+      readOnly: readOnly || onTap != null,
+      onTap: onTap,
+      decoration: InputDecoration(
+        hintText: hint,
+        border: InputBorder.none,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 15,
+          vertical: 15,
         ),
+        suffixIcon: icon != null ? Icon(icon, color: Colors.grey) : null,
       ),
-    );
-  }
+    ),
+  );
 
-  Widget _buildDatePickerField({required String hint}) {
-    return Container(
-      height: 52,
-      padding: const EdgeInsets.only(left: 20, right: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: _borderColor),
+  Widget _buildDropdown() => Container(
+    margin: const EdgeInsets.only(bottom: 15),
+    padding: const EdgeInsets.symmetric(horizontal: 15),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(10),
+      border: Border.all(color: Colors.grey.shade400),
+    ),
+    child: DropdownButtonHideUnderline(
+      child: DropdownButton<String>(
+        value: _selectedGender,
+        isExpanded: true,
+        items: [
+          "Male",
+          "Female",
+          "Other",
+        ].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
+        onChanged: (v) => setState(() => _selectedGender = v!),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(hint, style: TextStyle(color: Colors.grey[600], fontSize: 14)),
-          Icon(Icons.calendar_today, color: _primaryBlue, size: 20),
-        ],
-      ),
-    );
-  }
+    ),
+  );
 
-  Widget _buildSectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10, left: 4),
-      child: Text(
-        title,
-        style: const TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: 14,
-          color: Colors.black87,
+  Widget _buildCustomTabBar() => Container(
+    height: 45,
+    decoration: BoxDecoration(
+      color: Colors.grey[300],
+      borderRadius: BorderRadius.circular(25),
+    ),
+    child: Row(children: [_tabItem("Personal", 0), _tabItem("Parent Info", 1)]),
+  );
+
+  Widget _tabItem(String title, int index) => Expanded(
+    child: GestureDetector(
+      onTap: () => setState(() => _selectedTabIndex = index),
+      child: Container(
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: _selectedTabIndex == index ? _primaryBlue : Colors.transparent,
+          borderRadius: BorderRadius.circular(25),
         ),
-      ),
-    );
-  }
-
-  Widget _buildSaveButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 50,
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: _primaryBlue,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
-          ),
-        ),
-        onPressed: () {},
-        child: const Text(
-          "Save",
+        child: Text(
+          title,
           style: TextStyle(
-            fontSize: 16,
+            color: _selectedTabIndex == index ? Colors.white : Colors.black,
             fontWeight: FontWeight.bold,
-            color: Colors.white,
           ),
         ),
       ),
+    ),
+  );
+
+  Widget _buildSaveButton() => SizedBox(
+    width: double.infinity,
+    height: 50,
+    child: ElevatedButton(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: _primaryBlue,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+      onPressed: _handleSave,
+      child: const Text(
+        "SAVE",
+        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+      ),
+    ),
+  );
+
+  Widget _buildImagePicker() => Center(
+    child: GestureDetector(
+      onTap: _pickImage,
+      child: Container(
+        width: 110,
+        height: 130,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: Colors.black12),
+          image: _imageFile != null
+              ? DecorationImage(
+                  image: FileImage(_imageFile!),
+                  fit: BoxFit.cover,
+                )
+              : null,
+        ),
+        child: _imageFile == null
+            ? const Icon(Icons.add_a_photo, size: 40, color: Colors.grey)
+            : null,
+      ),
+    ),
+  );
+
+  Future<void> _pickDate(TextEditingController controller) async {
+    DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(1900),
+      lastDate: DateTime(2100),
     );
+    if (picked != null) {
+      // Force YYYY-MM-DD
+      setState(() => controller.text = DateFormat('yyyy-MM-dd').format(picked));
+    }
+  }
+
+  Future<void> _pickImage() async {
+    final XFile? image = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+    );
+    if (image != null) setState(() => _imageFile = File(image.path));
   }
 }

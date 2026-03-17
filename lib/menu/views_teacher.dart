@@ -18,8 +18,6 @@ class _ViewsTeacherState extends State<ViewsTeacher> {
 
   // array for dropdown options (if needed in the future)
   String _searchQuery = "";
-  String _selectedClass = "10 - A";
-  String _selectedSubject = "English";
 
   final String apiUrl = 'http://10.0.2.2:8000/api/teachers';
   final String bearerToken =
@@ -92,39 +90,13 @@ class _ViewsTeacherState extends State<ViewsTeacher> {
       ),
       body: Column(
         children: [
-          // ១. ផ្នែក Select ថ្នាក់ និង មុខវិជ្ជា
           Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _buildFilterDropdown(
-                    ["10 - A", "11 - B", "12 - C"],
-                    _selectedClass,
-                    (val) {
-                      setState(() => _selectedClass = val!);
-                      _filterLogic();
-                    },
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildFilterDropdown(
-                    ["English", "Math", "Khmer"],
-                    _selectedSubject,
-                    (val) {
-                      setState(() => _selectedSubject = val!);
-                      _filterLogic();
-                    },
-                  ),
-                ),
-              ],
+            padding: const EdgeInsets.only(
+              left: 12,
+              right: 12,
+              bottom: 10,
+              top: 25,
             ),
-          ),
-
-          // ២. ផ្នែក Search
-          Padding(
-            padding: const EdgeInsets.only(left: 12, right: 12, bottom: 10),
             child: TextField(
               onChanged: (value) {
                 _searchQuery = value;
@@ -143,8 +115,6 @@ class _ViewsTeacherState extends State<ViewsTeacher> {
               ),
             ),
           ),
-
-          // ៣. បញ្ជីឈ្មោះគ្រូ
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
@@ -168,40 +138,13 @@ class _ViewsTeacherState extends State<ViewsTeacher> {
       ),
     );
   }
-
-  // Widget សម្រាប់ Select Dropdown
-  Widget _buildFilterDropdown(
-    List<String> items,
-    String currentVal,
-    Function(String?) onChange,
-  ) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.blue.shade100),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: currentVal,
-          isExpanded: true,
-          items: items
-              .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-              .toList(),
-          onChanged: onChange,
-        ),
-      ),
-    );
-  }
-
   Widget _buildTeacherCard(String name, String id) {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(15),
-        side: BorderSide(color: Colors.grey.shade200),
+        side: BorderSide(color: const Color.fromARGB(255, 223, 222, 222)),
       ),
       child: ListTile(
         leading: const CircleAvatar(
