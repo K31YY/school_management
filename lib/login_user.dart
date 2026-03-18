@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 
-// Import your dashboards and other necessary files
 import 'package:ungthoung_app/app_dashboard.dart';
 import 'package:ungthoung_app/students/student_dashboard.dart';
 import 'package:ungthoung_app/teachers/teacher_dashboard.dart';
@@ -19,21 +18,18 @@ class LoginUser extends StatefulWidget {
 class _LoginUserState extends State<LoginUser> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  bool _isObscure = true;
-
-  // information for API connection
+  bool _isObscured = true;
   final Color _primaryColor = const Color(0xFF4A5BF6);
 
   Future<void> loginUser() async {
-    String loginKey = _usernameController.text.trim();
-    String password = _passwordController.text.trim();
+    final loginKey = _usernameController.text.trim();
+    final password = _passwordController.text.trim();
 
     if (loginKey.isEmpty || password.isEmpty) {
       EasyLoading.showError('Please enter both username and password!');
       return;
     }
 
-    // URL ទៅកាន់ Laravel API
     final url = Uri.parse('http://10.0.2.2:8000/api/login');
 
     try {
@@ -55,21 +51,19 @@ class _LoginUserState extends State<LoginUser> {
 
         if (data['success'] == true) {
           final sp = await SharedPreferences.getInstance();
+
           if (data['user'] != null && data['user']['id'] != null) {
-            int uId = int.parse(data['user']['id'].toString());
-            await sp.setInt('USER_ID_KEY', uId); // Key នេះប្រើក្នុង AddTeacher
-            debugPrint("Saved USER_ID: $uId");
+            final uId = int.parse(data['user']['id'].toString());
+            await sp.setInt('USER_ID_KEY', uId);
           }
 
-          // រក្សាទុក Token និង Role សម្រាប់ប្រើប្រាស់បន្ត
           await sp.setString('TOKEN', data['token'] ?? "");
           await sp.setString('ROLE', data['role'] ?? "");
           await sp.setString('FULLNAME', data['display_name'] ?? "User");
 
           EasyLoading.showSuccess('Welcome!');
 
-          // បែងចែក Dashboard តាម Role
-          String role = data['role']?.toString().toLowerCase() ?? "";
+          final role = data['role']?.toString().toLowerCase() ?? "";
           Widget nextScreen;
 
           if (role == 'admin') {
@@ -81,6 +75,7 @@ class _LoginUserState extends State<LoginUser> {
           }
 
           if (!mounted) return;
+
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (context) => nextScreen),
@@ -93,7 +88,6 @@ class _LoginUserState extends State<LoginUser> {
       }
     } catch (e) {
       EasyLoading.dismiss();
-      debugPrint("Login Error: $e");
       EasyLoading.showError('Failed to connect to Server!');
     }
   }
@@ -108,7 +102,6 @@ class _LoginUserState extends State<LoginUser> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Logo
               Icon(Icons.school_rounded, size: 100, color: _primaryColor),
               const SizedBox(height: 10),
               const Text(
@@ -125,8 +118,6 @@ class _LoginUserState extends State<LoginUser> {
                 style: TextStyle(color: Colors.grey),
               ),
               const SizedBox(height: 50),
-
-              // Username Field
               TextField(
                 controller: _usernameController,
                 decoration: InputDecoration(
@@ -141,19 +132,17 @@ class _LoginUserState extends State<LoginUser> {
                 ),
               ),
               const SizedBox(height: 20),
-
-              // Password Field
               TextField(
                 controller: _passwordController,
-                obscureText: _isObscure,
+                obscureText: _isObscured,
                 decoration: InputDecoration(
                   labelText: "Password",
                   prefixIcon: const Icon(Icons.lock_outline),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _isObscure ? Icons.visibility : Icons.visibility_off,
+                      _isObscured ? Icons.visibility : Icons.visibility_off,
                     ),
-                    onPressed: () => setState(() => _isObscure = !_isObscure),
+                    onPressed: () => setState(() => _isObscured = !_isObscured),
                   ),
                   filled: true,
                   fillColor: Colors.grey[100],
@@ -164,8 +153,6 @@ class _LoginUserState extends State<LoginUser> {
                 ),
               ),
               const SizedBox(height: 40),
-
-              // Login Button
               SizedBox(
                 width: double.infinity,
                 height: 55,

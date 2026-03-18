@@ -313,7 +313,9 @@ class _AdvancedReportingScreenState extends State<AdvancedReportingScreen> {
             decoration: BoxDecoration(
               color: Colors
                   .transparent, // Ensures the click passes through if needed, though GestureDetector handles it
-              border: Border.all(color: Colors.blueAccent),
+              border: Border.all(
+                color: const Color.fromARGB(255, 28, 100, 225),
+              ),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Row(

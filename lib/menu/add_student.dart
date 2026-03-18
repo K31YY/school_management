@@ -21,14 +21,16 @@ class _AddStudentState extends State<AddStudent> {
 
   int _selectedTabIndex = 0;
   String _selectedGender = "Male";
+  String _selectedStatus = "1";
   File? _imageFile;
-  bool _isObscure = true;
   int? _currentUserId;
 
   // Controllers
-  final TextEditingController _rollNoCtrl = TextEditingController();
+  final TextEditingController _rollNoCtrl =
+      TextEditingController();
   final TextEditingController _nameKhCtrl = TextEditingController();
   final TextEditingController _nameEnCtrl = TextEditingController();
+  final TextEditingController _stuNameCtrl = TextEditingController();
   final TextEditingController _phoneCtrl = TextEditingController();
   final TextEditingController _emailCtrl = TextEditingController();
   final TextEditingController _passwordCtrl = TextEditingController();
@@ -49,26 +51,24 @@ class _AddStudentState extends State<AddStudent> {
     _fetchUserId();
   }
 
+  // Fix: Show only the ID number (e.g., 1)
   Future<void> _fetchUserId() async {
     final prefs = await SharedPreferences.getInstance();
     int? id = prefs.getInt('USER_ID_KEY');
-
     if (id != null) {
       setState(() {
         _currentUserId = id;
-        // Format for display: UTB001
-        _rollNoCtrl.text = "UTB${id.toString().padLeft(3, '0')}";
+        _rollNoCtrl.text = id.toString();
       });
-    } else {
-      _rollNoCtrl.text = "No ID Found";
     }
   }
 
   Future<void> _handleSave() async {
+    // 1. Validation - Ensure required fields are not empty
     if (_nameEnCtrl.text.isEmpty ||
         _emailCtrl.text.isEmpty ||
         _passwordCtrl.text.isEmpty) {
-      EasyLoading.showError("Please fill all required fields!");
+      EasyLoading.showError("Please fill Name, Email, and Password");
       return;
     }
 
@@ -78,24 +78,28 @@ class _AddStudentState extends State<AddStudent> {
       final prefs = await SharedPreferences.getInstance();
       String? token = prefs.getString('TOKEN');
 
+      // Use your specific local IP or 10.0.2.2 for Emulator
       var request = http.MultipartRequest(
         'POST',
         Uri.parse('http://10.0.2.2:8000/api/students'),
       );
 
+      // 2. CRITICAL HEADERS (Postman adds these automatically, Flutter needs them)
       request.headers.addAll({
         "Authorization": "Bearer $token",
-        "Accept": "application/json",
+        "Accept": "application/json", // This prevents the 500 redirect error
       });
 
-      // Mapping ALL fields to match your Laravel Controller store()
+      // 3. ADD FIELDS (Must match your Postman keys exactly)
       request.fields.addAll({
-        'UserID': _rollNoCtrl.text,
-        'StuName': _nameEnCtrl.text,
+        'UserID':
+            _currentUserId?.toString() ?? "1", // Ensure this is a valid ID
+        'StuName':
+            "${_nameEnCtrl.text} (${_nameKhCtrl.text})", // Matches Postman style
         'StuNameKH': _nameKhCtrl.text,
         'StuNameEN': _nameEnCtrl.text,
-        'Gender': _selectedGender,
-        'DOB': _dobCtrl.text, // Must be 'yyyy-MM-dd'
+        'Gender': _selectedGender, // e.g., "Male"
+        'DOB': _dobCtrl.text, // e.g., "2008-01-01"
         'POB': _pobCtrl.text,
         'Address': _addressCtrl.text,
         'Phone': _phoneCtrl.text,
@@ -107,31 +111,41 @@ class _AddStudentState extends State<AddStudent> {
         'MotherName': _motherNameCtrl.text,
         'MotherJob': _motherJobCtrl.text,
         'FamilyContact': _familyContactCtrl.text,
-        'Status': '1', // Ensure this matches your DB
+        'Status': "1", // Sending as String "1" (Laravel handles it)
+        'IsDeleted': "0",
       });
 
+      // 4. ADD PHOTO (Key must be 'Photo' with capital P)
       if (_imageFile != null) {
         request.files.add(
           await http.MultipartFile.fromPath('Photo', _imageFile!.path),
         );
       }
 
+      // 5. SEND AND CAPTURE RESPONSE
       var streamedResponse = await request.send();
       var response = await http.Response.fromStream(streamedResponse);
 
       EasyLoading.dismiss();
 
       if (response.statusCode == 201 || response.statusCode == 200) {
-        EasyLoading.showSuccess("Saved Successfully!");
-        Navigator.pop(context);
+        EasyLoading.showSuccess("Registered Successfully!");
+        Navigator.pop(context, true); // Return true to refresh the list
       } else {
-        // If it fails, this print is critical
-        print("SERVER ERROR 422: ${response.body}");
-        EasyLoading.showError("Error: Check your logs");
+        // THIS IS THE MOST IMPORTANT PART FOR DEBUGGING
+        print("FULL ERROR FROM SERVER: ${response.body}");
+
+        // If the error is 422, it's a validation error (e.g., Email already exists)
+        if (response.statusCode == 422) {
+          EasyLoading.showError("Email already taken or Data invalid");
+        } else {
+          EasyLoading.showError("Server Error: ${response.statusCode}");
+        }
       }
     } catch (e) {
       EasyLoading.dismiss();
-      EasyLoading.showError("Connection failed: $e");
+      print("CONNECTION ERROR: $e");
+      EasyLoading.showError("Could not connect to server");
     }
   }
 
@@ -141,6 +155,7 @@ class _AddStudentState extends State<AddStudent> {
       backgroundColor: _bgGray,
       appBar: AppBar(
         backgroundColor: _primaryBlue,
+        iconTheme: const IconThemeData(color: Colors.white),
         title: const Text(
           "Register Student",
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
@@ -172,16 +187,23 @@ class _AddStudentState extends State<AddStudent> {
       ),
       _buildTextField(hint: "Name (Khmer)", controller: _nameKhCtrl),
       _buildTextField(hint: "Name (English)", controller: _nameEnCtrl),
+      _buildTextField(hint: "FullName", controller: _stuNameCtrl),
       _buildTextField(hint: "Email", controller: _emailCtrl),
-      _buildTextField(hint: "Password", controller: _passwordCtrl),
+      _buildTextField(hint: "Phone", controller: _phoneCtrl),
+      _buildTextField(
+        hint: "Password",
+        controller: _passwordCtrl,
+        isPassword: true,
+      ),
       Row(
         children: [
-          Expanded(child: _buildDropdown()),
+          Expanded(child: _buildGenderDropdown()),
           const SizedBox(width: 15),
           Expanded(
             child: _buildTextField(
-              hint: "Date of Birth",
+              hint: "DOB",
               controller: _dobCtrl,
+              icon: Icons.calendar_today,
               onTap: () => _pickDate(_dobCtrl),
             ),
           ),
@@ -190,7 +212,8 @@ class _AddStudentState extends State<AddStudent> {
       _buildTextField(hint: "Place of Birth", controller: _pobCtrl),
       _buildTextField(hint: "Promotion", controller: _promotionCtrl),
       _buildTextField(hint: "Address", controller: _addressCtrl),
-      const SizedBox(height: 30),
+      _buildStatusDropdown(),
+      const SizedBox(height: 15),
       _buildSaveButton(),
     ],
   );
@@ -207,25 +230,28 @@ class _AddStudentState extends State<AddStudent> {
     ],
   );
 
-  // Reusing your Teacher Form UI logic
+  // --- UI Components ---
+
   Widget _buildTextField({
     required String hint,
-    IconData? icon,
     TextEditingController? controller,
+    IconData? icon,
     VoidCallback? onTap,
     bool readOnly = false,
     Color? fillColor,
+    bool isPassword = false,
   }) => Container(
     margin: const EdgeInsets.only(bottom: 15),
     decoration: BoxDecoration(
       color: fillColor ?? Colors.white,
       borderRadius: BorderRadius.circular(15),
-      border: Border.all(color: Colors.grey.shade400),
+      border: Border.all(color: Colors.blue.shade400),
     ),
     child: TextField(
       controller: controller,
       readOnly: readOnly || onTap != null,
       onTap: onTap,
+      obscureText: isPassword,
       decoration: InputDecoration(
         hintText: hint,
         border: InputBorder.none,
@@ -238,13 +264,13 @@ class _AddStudentState extends State<AddStudent> {
     ),
   );
 
-  Widget _buildDropdown() => Container(
+  Widget _buildGenderDropdown() => Container(
     margin: const EdgeInsets.only(bottom: 15),
     padding: const EdgeInsets.symmetric(horizontal: 15),
     decoration: BoxDecoration(
       color: Colors.white,
-      borderRadius: BorderRadius.circular(10),
-      border: Border.all(color: Colors.grey.shade400),
+      borderRadius: BorderRadius.circular(15),
+      border: Border.all(color: Colors.blue.shade400),
     ),
     child: DropdownButtonHideUnderline(
       child: DropdownButton<String>(
@@ -256,6 +282,27 @@ class _AddStudentState extends State<AddStudent> {
           "Other",
         ].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
         onChanged: (v) => setState(() => _selectedGender = v!),
+      ),
+    ),
+  );
+
+  Widget _buildStatusDropdown() => Container(
+    margin: const EdgeInsets.only(bottom: 15),
+    padding: const EdgeInsets.symmetric(horizontal: 15),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(15),
+      border: Border.all(color: Colors.blue.shade400),
+    ),
+    child: DropdownButtonHideUnderline(
+      child: DropdownButton<String>(
+        value: _selectedStatus,
+        isExpanded: true,
+        items: const [
+          DropdownMenuItem(value: "1", child: Text("Active")),
+          DropdownMenuItem(value: "0", child: Text("Inactive")),
+        ],
+        onChanged: (v) => setState(() => _selectedStatus = v!),
       ),
     ),
   );
@@ -335,15 +382,14 @@ class _AddStudentState extends State<AddStudent> {
       firstDate: DateTime(1900),
       lastDate: DateTime(2100),
     );
-    if (picked != null) {
-      // Force YYYY-MM-DD
+    if (picked != null)
       setState(() => controller.text = DateFormat('yyyy-MM-dd').format(picked));
-    }
   }
 
   Future<void> _pickImage() async {
     final XFile? image = await ImagePicker().pickImage(
       source: ImageSource.gallery,
+      imageQuality: 50,
     );
     if (image != null) setState(() => _imageFile = File(image.path));
   }

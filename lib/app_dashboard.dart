@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+
 import 'package:ungthoung_app/menu/assign_schedule.dart';
 import 'package:ungthoung_app/menu/navigation_menu.dart';
 import 'package:ungthoung_app/menu/report_area.dart';
 import 'package:ungthoung_app/menu/views_student.dart';
 import 'package:ungthoung_app/menu/views_teacher.dart';
 import 'package:ungthoung_app/notification_screen.dart';
+import 'package:ungthoung_app/students/stu_class.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -18,8 +20,6 @@ class AdminDashboard extends StatefulWidget {
 
 class _AdminDashboardState extends State<AdminDashboard> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-
-  // create variables to hold counts (initially 0 or loading state)
   int _teacherCount = 0;
   int _studentCount = 0;
   bool _isLoading = true;
@@ -30,14 +30,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
     _fetchDashboardData();
   }
 
-  // Function to fetch counts from API and update state
   Future<void> _fetchDashboardData() async {
     setState(() => _isLoading = true);
+
     try {
       final prefs = await SharedPreferences.getInstance();
-      String? token = prefs.getString('TOKEN');
+      final token = prefs.getString('TOKEN');
 
-      // change URL to your actual API endpoint for dashboard counts
       final response = await http.get(
         Uri.parse('http://10.0.2.2:8000/api/dashboard-counts'),
         headers: {
@@ -54,11 +53,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
           _isLoading = false;
         });
       } else {
-        debugPrint("Server Error: ${response.statusCode}");
         setState(() => _isLoading = false);
       }
     } catch (e) {
-      debugPrint("Connection Error: $e");
       setState(() => _isLoading = false);
     }
   }
@@ -69,9 +66,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   String getGreeting() {
-    int hour = DateTime.now().hour;
+    final hour = DateTime.now().hour;
+
     if (hour >= 12 && hour < 17) return 'Good Afternoon!';
+
     if (hour >= 17 && hour <= 24) return 'Good Evening!';
+
     return 'Good Morning!';
   }
 
@@ -79,21 +79,29 @@ class _AdminDashboardState extends State<AdminDashboard> {
   Widget build(BuildContext context) {
     return Scaffold(
       key: _scaffoldKey,
+
       backgroundColor: const Color(0xFFF4F6F8),
-      drawer: const NavigetionMenu(),
+
+      drawer: const NavigationMenu(),
+
       body: RefreshIndicator(
         onRefresh: _fetchDashboardData,
+
         child: FutureBuilder<String>(
           future: _getUserName(),
+
           builder: (context, snapshot) {
             String name = snapshot.data ?? "Guest User";
+
             String welcomeMessage = getGreeting();
 
             return SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
+
               child: Column(
                 children: [
                   _buildHeader(context, name, welcomeMessage),
+
                   _buildBody(context),
                 ],
               ),
@@ -106,56 +114,81 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   Widget _buildHeader(
     BuildContext context,
+
     String displayName,
+
     String greetingText,
   ) {
     return SizedBox(
       height: 220,
+
       child: Stack(
         clipBehavior: Clip.none,
+
         alignment: Alignment.topCenter,
+
         children: [
           Container(
             height: 180,
+
             width: double.infinity,
+
             decoration: const BoxDecoration(
               color: Color(0xFF4A5BF6),
+
               borderRadius: BorderRadius.only(
                 bottomLeft: Radius.circular(30),
+
                 bottomRight: Radius.circular(30),
               ),
             ),
+
             child: SafeArea(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
+
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+
                   children: [
                     IconButton(
                       icon: const Icon(
                         Icons.menu,
+
                         color: Colors.white,
+
                         size: 30,
                       ),
+
                       onPressed: () => _scaffoldKey.currentState?.openDrawer(),
                     ),
+
                     const Text(
                       'Ung Thoung Buddhist\nHigh School',
+
                       textAlign: TextAlign.center,
+
                       style: TextStyle(
                         color: Colors.white,
+
                         fontSize: 18,
+
                         fontWeight: FontWeight.bold,
                       ),
                     ),
+
                     IconButton(
                       icon: const Icon(
                         Icons.notifications,
+
                         size: 28,
+
                         color: Colors.white,
                       ),
+
                       onPressed: () => Navigator.push(
                         context,
+
                         MaterialPageRoute(
                           builder: (context) => const NotificationScreen(),
                         ),
@@ -166,50 +199,70 @@ class _AdminDashboardState extends State<AdminDashboard> {
               ),
             ),
           ),
+
           Positioned(
             top: 120,
+
             left: 20,
+
             right: 20,
+
             child: Container(
               padding: const EdgeInsets.all(16.0),
+
               decoration: BoxDecoration(
                 color: Colors.white,
+
                 borderRadius: BorderRadius.circular(20.0),
+
                 boxShadow: const [
                   BoxShadow(
                     color: Colors.black12,
+
                     blurRadius: 10,
+
                     offset: Offset(0, 5),
                   ),
                 ],
               ),
+
               child: Row(
                 children: [
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+
                       children: [
                         Text(
                           greetingText,
+
                           style: const TextStyle(
                             color: Colors.grey,
+
                             fontSize: 14,
                           ),
                         ),
+
                         const SizedBox(height: 4),
+
                         Text(
                           displayName,
+
                           style: const TextStyle(
                             color: Colors.black,
+
                             fontSize: 20,
+
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                       ],
                     ),
                   ),
+
                   const CircleAvatar(
                     radius: 30,
+
                     backgroundImage: AssetImage('assets/images/profile.jpg'),
                   ),
                 ],
@@ -224,6 +277,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   Widget _buildBody(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(20.0),
+
       child: Column(
         children: [
           Row(
@@ -231,72 +285,118 @@ class _AdminDashboardState extends State<AdminDashboard> {
               Expanded(
                 child: _buildInfoCard(
                   'Teachers',
+
                   _isLoading ? '...' : '$_teacherCount',
+
                   Icons.groups,
+
                   const Color(0xFFE3E6FD),
+
                   const Color(0xFF4A5BF6),
                 ),
               ),
+
               const SizedBox(width: 20),
+
               Expanded(
                 child: _buildInfoCard(
                   'Students',
+
                   _isLoading ? '...' : '$_studentCount',
+
                   Icons.school,
+
                   const Color(0xFFE3E6FD),
+
                   const Color(0xFF4A5BF6),
                 ),
               ),
             ],
           ),
+
           const SizedBox(height: 15),
+
           GridView.count(
             crossAxisCount: 3,
+
             shrinkWrap: true,
+
             physics: const NeverScrollableScrollPhysics(),
+
             crossAxisSpacing: 15,
+
             mainAxisSpacing: 15,
+
             children: [
               _buildGridItem(
                 context,
+
                 'Teacher\nLists',
+
                 Icons.cast_for_education,
+
                 const Color(0xFFD4F8E6),
+
                 const Color(0xFF34C759),
               ),
+
               _buildGridItem(
                 context,
+
                 'Student\nLists',
+
                 Icons.people_alt,
+
                 const Color(0xFFE3E6FD),
+
                 const Color(0xFF4A5BF6),
               ),
+
               _buildGridItem(
                 context,
+
                 'Subjects',
+
                 Icons.book,
+
                 const Color(0xFFFEF4DB),
+
                 const Color(0xFFFF9500),
               ),
+
               _buildGridItem(
                 context,
+
                 'Class',
+
                 Icons.meeting_room,
+
                 const Color(0xFFE6DFFB),
+
                 const Color(0xFF9059FF),
               ),
+
               _buildGridItem(
                 context,
+
                 'Reporting',
+
                 Icons.bar_chart,
+
                 const Color(0xFFD9EEFD),
+
                 const Color(0xFF5AC8FA),
               ),
+
               _buildGridItem(
                 context,
+
                 'Schedule',
+
                 Icons.calendar_today,
+
                 const Color(0xFFFEDDE4),
+
                 const Color(0xFFFF3B30),
               ),
             ],
@@ -308,46 +408,65 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   Widget _buildInfoCard(
     String title,
+
     String count,
+
     IconData icon,
+
     Color bgColor,
+
     Color iconColor,
   ) {
     return Container(
       padding: const EdgeInsets.all(16),
+
       decoration: BoxDecoration(
         color: Colors.white,
+
         borderRadius: BorderRadius.circular(20),
+
         boxShadow: const [
           BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.05), blurRadius: 10),
         ],
       ),
+
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+
         children: [
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+
             children: [
               Text(
                 title,
+
                 style: const TextStyle(color: Colors.grey, fontSize: 13),
               ),
+
               const SizedBox(height: 8),
+
               Text(
                 count,
+
                 style: const TextStyle(
                   fontSize: 22,
+
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ],
           ),
+
           Container(
             padding: const EdgeInsets.all(8),
+
             decoration: BoxDecoration(
               color: bgColor,
+
               borderRadius: BorderRadius.circular(12),
             ),
+
             child: Icon(icon, color: iconColor, size: 24),
           ),
         ],
@@ -357,56 +476,82 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   Widget _buildGridItem(
     BuildContext context,
+
     String label,
+
     IconData icon,
+
     Color bgColor,
+
     Color iconColor,
   ) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
+
         borderRadius: BorderRadius.circular(20),
+
         boxShadow: [
           BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
         ],
       ),
+
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
+
         onTap: () {
           if (label.contains('Teacher')) {
             Navigator.push(
               context,
+
               MaterialPageRoute(builder: (context) => ViewsTeacher()),
             );
           } else if (label.contains('Student')) {
             Navigator.push(
               context,
+
               MaterialPageRoute(builder: (context) => const ViewsStudent()),
+            );
+          } else if (label == 'Class') {
+            Navigator.push(
+              context,
+
+              MaterialPageRoute(builder: (context) => const StuClass()),
             );
           } else if (label == 'Reporting') {
             Navigator.push(
               context,
+
               MaterialPageRoute(builder: (context) => const ReportingScreen()),
             );
           } else if (label == 'Schedule') {
             Navigator.push(
               context,
+
               MaterialPageRoute(builder: (context) => const AssignSchedule()),
             );
           }
         },
+
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+
           children: [
             Container(
               padding: const EdgeInsets.all(10),
+
               decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle),
+
               child: Icon(icon, color: iconColor, size: 26),
             ),
+
             const SizedBox(height: 8),
+
             Text(
               label,
+
               textAlign: TextAlign.center,
+
               style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
             ),
           ],

@@ -3,37 +3,24 @@ import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import 'package:ungthoung_app/app_colors.dart';
 import 'package:ungthoung_app/app_dashboard.dart';
 import 'package:ungthoung_app/login_user.dart';
-
 import 'package:ungthoung_app/students/student_dashboard.dart';
 import 'package:ungthoung_app/teachers/teacher_dashboard.dart';
 
-Future<void> main() async {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Initialize Firebase (required for signup_user.dart and app_auth.dart)
   await Firebase.initializeApp();
 
-  String? userRole;
-  bool isLoggedIn = false;
-
-  try {
-    final sp = await SharedPreferences.getInstance();
-    final String? token = sp.getString(
-      'TOKEN',
-    ); // Fixed: was 'token', must match 'TOKEN' saved in login_user.dart
-    userRole = sp.getString('ROLE');
-    if (token != null && token.isNotEmpty) {
-      isLoggedIn = true;
-    }
-  } catch (e) {
-    debugPrint("Startup Error: $e");
-  }
+  final prefs = await SharedPreferences.getInstance();
+  final token = prefs.getString('TOKEN');
+  final role = prefs.getString('ROLE');
+  final isLoggedIn = token != null && token.isNotEmpty;
 
   configLoading();
-  runApp(MyApp(isLoggedIn: isLoggedIn, role: userRole));
+  runApp(MyApp(isLoggedIn: isLoggedIn, role: role));
 }
 
 void configLoading() {
@@ -63,10 +50,10 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Ung Thoung Buddhist High School',
-      // Using a global key for navigation is helpful for 401 interceptors later
       builder: EasyLoading.init(),
       theme: ThemeData(
-        useMaterial3: true, // Recommended for 2026 Flutter apps
+        fontFamily: 'KhmerFonts',
+        useMaterial3: true,
         primaryColor: AppColors.bgColor,
         appBarTheme: const AppBarTheme(
           backgroundColor: AppColors.button,
@@ -88,9 +75,7 @@ class MyApp extends StatelessWidget {
   Widget _getHome() {
     if (!isLoggedIn) return const LoginUser();
 
-    final normalizedRole = role?.toLowerCase().trim();
-
-    switch (normalizedRole) {
+    switch (role?.toLowerCase().trim()) {
       case 'admin':
         return const AdminDashboard();
       case 'teacher':
@@ -98,7 +83,6 @@ class MyApp extends StatelessWidget {
       case 'student':
         return const StudentDashboard();
       default:
-        // If logged in but role is missing/corrupt, force re-login
         return const LoginUser();
     }
   }
