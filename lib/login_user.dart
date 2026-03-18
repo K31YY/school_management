@@ -107,11 +107,9 @@ class _LoginUserState extends State<LoginUser> {
               const Text(
                 "Ung Thoung Buddhist",
                 style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF2D3142),
-                ),
-                textAlign: TextAlign.center,
+                  color: Colors.grey,
+                  fontWeight: FontWeight.w500,
+                  fontSize: 18,),
               ),
               const Text(
                 "High School Management System",
