@@ -12,45 +12,41 @@ class SignupUser extends StatefulWidget {
 }
 
 class _SignupUserState extends State<SignupUser> {
-  bool ispassword = true;
-  final txt = FocusNode();
+  bool _isPasswordVisible = true;
+  final _formKey = GlobalKey<FormState>();
+  final _fullnameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmController = TextEditingController();
+
   void togglePassword() {
     setState(() {
-      ispassword = !ispassword;
-      if (txt.hasPrimaryFocus) return;
-      txt.canRequestFocus = false;
+      _isPasswordVisible = !_isPasswordVisible;
     });
   }
 
-  final _keyForm = GlobalKey<FormState>();
-  TextEditingController controllerFullname = TextEditingController();
-  TextEditingController controllerEmail = TextEditingController();
-  TextEditingController controllerPassword = TextEditingController();
-  TextEditingController controllerConfirm = TextEditingController();
-
-  Future<void> singupUser(
+  Future<void> _signupUser(
     String fullname,
     String email,
     String password,
   ) async {
     try {
       EasyLoading.show(status: 'Loading...');
-      await Future.delayed(Duration(seconds: 1));
-      // create user with Email and password
-      UserCredential userCredential = await FirebaseAuth.instance
-          .createUserWithEmailAndPassword(email: email, password: password);
-      String userId = userCredential.user!.uid;
+      await Future.delayed(const Duration(seconds: 1));
 
-      // save user info with Firestore
+      final userCredential = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(email: email, password: password);
+      final userId = userCredential.user!.uid;
+
       await FirebaseFirestore.instance.collection('users').doc(userId).set({
         'fullname': fullname,
         'email': email,
         'createdAt': DateTime.now(),
       });
+
       EasyLoading.showSuccess('Added user successfully');
-      // ignore: use_build_context_synchronously
-      Navigator.pop(context);
       if (!mounted) return;
+      Navigator.pop(context);
     } catch (ex) {
       EasyLoading.showError('Error: $ex');
     }
@@ -59,23 +55,22 @@ class _SignupUserState extends State<SignupUser> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // appBar: AppBar(title: Text('Signup User')),
       body: Form(
-        key: _keyForm,
+        key: _formKey,
         child: ListView(
           children: <Widget>[
             Container(
               alignment: Alignment.center,
-              margin: EdgeInsets.fromLTRB(10, 30, 10, 20),
+              margin: const EdgeInsets.fromLTRB(10, 30, 10, 20),
               child: const Icon(
                 Icons.school,
                 color: AppColors.button,
                 size: 200,
               ),
             ),
-            SizedBox(height: 35),
+            const SizedBox(height: 35),
             Container(
-              margin: EdgeInsets.fromLTRB(20, 0, 20, 10),
+              margin: const EdgeInsets.fromLTRB(20, 0, 20, 10),
               child: TextFormField(
                 validator: (value) {
                   if (value == null || value.isEmpty) {
@@ -83,7 +78,7 @@ class _SignupUserState extends State<SignupUser> {
                   }
                   return null;
                 },
-                controller: controllerFullname,
+                controller: _fullnameController,
                 decoration: InputDecoration(
                   filled: true,
                   fillColor: AppColors.blue,
@@ -91,25 +86,25 @@ class _SignupUserState extends State<SignupUser> {
                     borderRadius: BorderRadius.circular(15),
                   ),
                   labelText: 'Full Name',
-                  labelStyle: TextStyle(color: Colors.black),
-                  prefixIcon: Icon(Icons.account_circle),
+                  labelStyle: const TextStyle(color: Colors.black),
+                  prefixIcon: const Icon(Icons.account_circle),
                   prefixIconColor: Colors.black,
                 ),
               ),
             ),
             Container(
-              margin: EdgeInsets.fromLTRB(20, 0, 20, 0),
+              margin: const EdgeInsets.fromLTRB(20, 0, 20, 0),
               child: TextFormField(
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Please enter email';
                   }
                   if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
-                    return 'Email is invaild!';
+                    return 'Email is invalid!';
                   }
                   return null;
                 },
-                controller: controllerEmail,
+                controller: _emailController,
                 decoration: InputDecoration(
                   filled: true,
                   fillColor: AppColors.blue,
@@ -117,14 +112,14 @@ class _SignupUserState extends State<SignupUser> {
                     borderRadius: BorderRadius.circular(15),
                   ),
                   labelText: 'Email',
-                  labelStyle: TextStyle(color: Colors.black),
-                  prefixIcon: Icon(Icons.account_circle),
+                  labelStyle: const TextStyle(color: Colors.black),
+                  prefixIcon: const Icon(Icons.account_circle),
                   prefixIconColor: Colors.black,
                 ),
               ),
             ),
             Container(
-              margin: EdgeInsets.fromLTRB(20, 10, 20, 0),
+              margin: const EdgeInsets.fromLTRB(20, 10, 20, 0),
               child: TextFormField(
                 validator: (value) {
                   if (value == null || value.isEmpty) {
@@ -135,8 +130,8 @@ class _SignupUserState extends State<SignupUser> {
                   }
                   return null;
                 },
-                controller: controllerPassword,
-                obscureText: ispassword,
+                controller: _passwordController,
+                obscureText: !_isPasswordVisible,
                 decoration: InputDecoration(
                   filled: true,
                   fillColor: AppColors.blue,
@@ -144,39 +139,35 @@ class _SignupUserState extends State<SignupUser> {
                     borderRadius: BorderRadius.circular(15),
                   ),
                   labelText: 'Password',
-                  labelStyle: TextStyle(color: Colors.black),
-                  prefixIcon: Icon(Icons.lock),
+                  labelStyle: const TextStyle(color: Colors.black),
+                  prefixIcon: const Icon(Icons.lock),
                   prefixIconColor: Colors.black,
-                  suffixIcon: Padding(
-                    padding: EdgeInsets.fromLTRB(10, 0, 10, 0),
-                    child: GestureDetector(
-                      onTap: togglePassword,
-                      child: Icon(
-                        // condition ? expr1 : expr2;
-                        ispassword
-                            ? Icons.visibility_rounded
-                            : Icons.visibility_off_rounded,
-                        color: Colors.black,
-                      ),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _isPasswordVisible
+                          ? Icons.visibility_rounded
+                          : Icons.visibility_off_rounded,
+                      color: Colors.black,
                     ),
+                    onPressed: togglePassword,
                   ),
                 ),
               ),
             ),
             Container(
-              margin: EdgeInsets.fromLTRB(20, 10, 20, 0),
+              margin: const EdgeInsets.fromLTRB(20, 10, 20, 0),
               child: TextFormField(
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Please enter confirm password';
                   }
-                  if (value != controllerPassword.text.trim()) {
+                  if (value != _passwordController.text.trim()) {
                     return 'Password not match!';
                   }
                   return null;
                 },
-                controller: controllerConfirm,
-                obscureText: ispassword,
+                controller: _confirmController,
+                obscureText: !_isPasswordVisible,
                 decoration: InputDecoration(
                   filled: true,
                   fillColor: AppColors.blue,
@@ -184,28 +175,24 @@ class _SignupUserState extends State<SignupUser> {
                     borderRadius: BorderRadius.circular(15),
                   ),
                   labelText: 'Confirm Password',
-                  labelStyle: TextStyle(color: Colors.black),
-                  prefixIcon: Icon(Icons.lock),
+                  labelStyle: const TextStyle(color: Colors.black),
+                  prefixIcon: const Icon(Icons.lock),
                   prefixIconColor: Colors.black,
-                  suffixIcon: Padding(
-                    padding: EdgeInsets.fromLTRB(10, 0, 10, 0),
-                    child: GestureDetector(
-                      onTap: togglePassword,
-                      child: Icon(
-                        // condition ? expr1 : expr2;
-                        ispassword
-                            ? Icons.visibility_rounded
-                            : Icons.visibility_off_rounded,
-                        color: Colors.black,
-                      ),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _isPasswordVisible
+                          ? Icons.visibility_rounded
+                          : Icons.visibility_off_rounded,
+                      color: Colors.black,
                     ),
+                    onPressed: togglePassword,
                   ),
                 ),
               ),
             ),
             Container(
               height: 55,
-              margin: EdgeInsets.fromLTRB(20, 30, 20, 10),
+              margin: const EdgeInsets.fromLTRB(20, 30, 20, 10),
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.button,
@@ -214,15 +201,15 @@ class _SignupUserState extends State<SignupUser> {
                   ),
                 ),
                 onPressed: () {
-                  if (_keyForm.currentState!.validate()) {
-                    String fullname = controllerFullname.text;
-                    String email = controllerEmail.text;
-                    String password = controllerPassword.text.trim();
-                    singupUser(fullname, email, password);
+                  if (_formKey.currentState!.validate()) {
+                    final fullname = _fullnameController.text;
+                    final email = _emailController.text;
+                    final password = _passwordController.text.trim();
+                    _signupUser(fullname, email, password);
                   }
                 },
-                child: Text(
-                  'SING UP',
+                child: const Text(
+                  'SIGN UP',
                   style: TextStyle(
                     color: AppColors.white,
                     fontWeight: FontWeight.bold,

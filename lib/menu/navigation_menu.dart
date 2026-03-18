@@ -1,36 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-// Make sure this path matches your LoginUser file!
 import 'package:ungthoung_app/login_user.dart';
-
+import 'package:ungthoung_app/menu/add_student.dart';
+import 'package:ungthoung_app/menu/add_teacher.dart';
 import 'package:ungthoung_app/menu/assign_schedule.dart';
 import 'package:ungthoung_app/menu/change_password.dart';
 import 'package:ungthoung_app/menu/report_area.dart';
 import 'package:ungthoung_app/menu/views_student.dart';
-import 'package:ungthoung_app/menu/add_student.dart';
-import 'package:ungthoung_app/menu/add_teacher.dart';
 import 'package:ungthoung_app/menu/views_teacher.dart';
 
-class NavigetionMenu extends StatefulWidget {
-  const NavigetionMenu({super.key});
+class NavigationMenu extends StatefulWidget {
+  const NavigationMenu({super.key});
 
   @override
-  State<NavigetionMenu> createState() => _NavigetionMenuState();
+  State<NavigationMenu> createState() => _NavigationMenuState();
 }
 
-class _NavigetionMenuState extends State<NavigetionMenu> {
+class _NavigationMenuState extends State<NavigationMenu> {
   String? fullname;
   String? role;
 
-  // 1. Clears local data and forces navigation to the Login Screen
+  /// Clears local data and forces navigation to the Login Screen
   Future<void> _logOut(BuildContext context) async {
     final sp = await SharedPreferences.getInstance();
-    await sp.clear(); // Wipes Token, Name, and Role
+    await sp.clear();
 
     if (!context.mounted) return;
 
-    // Destroys the dashboard and sends user to Login
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (context) => const LoginUser()),
@@ -52,9 +49,8 @@ class _NavigetionMenuState extends State<NavigetionMenu> {
     });
   }
 
-  // 2. The Fixed Logout Confirmation
+  /// Shows logout confirmation dialog
   Future<void> _confirmLogout(BuildContext context) async {
-    // We do NOT close the drawer early here anymore!
     final isLogout = await showDialog<bool>(
       context: context,
       builder: (BuildContext dialogContext) => AlertDialog(
@@ -73,7 +69,6 @@ class _NavigetionMenuState extends State<NavigetionMenu> {
       ),
     );
 
-    // If the user tapped 'Logout' (true), run the logOut function
     if (isLogout == true) {
       if (!context.mounted) return;
       await _logOut(context);
@@ -93,106 +88,51 @@ class _NavigetionMenuState extends State<NavigetionMenu> {
         padding: EdgeInsets.zero,
         children: [
           _buildDrawerHeader(),
-
-          // Section: Teacher
-          IntrinsicHeight(
-            child: Row(
-              children: const <Widget>[
-                Padding(
-                  padding: EdgeInsetsGeometry.symmetric(
-                    vertical: 10,
-                    horizontal: 16,
-                  ),
-                  child: Text(
-                    'Teacher',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
-                ),
-                Expanded(child: Divider(color: Colors.black, thickness: 1)),
-              ],
-            ),
-          ),
+          _buildSectionHeader('Teacher'),
           _buildMenuItem(
             context,
             Icons.view_list_outlined,
-            () => _NavigateTo(context, ViewsTeacher()),
+            () => _navigateTo(context, const ViewsTeacher()),
             title: 'Views Teacher',
           ),
           _buildMenuItem(
             context,
             Icons.person_add_outlined,
-            () => _NavigateTo(context, const AddTeacher()),
+            () => _navigateTo(context, const AddTeacher()),
             title: 'Add Teacher',
           ),
           _buildMenuItem(
             context,
             Icons.calendar_today_outlined,
-            () => _NavigateTo(context, const AssignSchedule()),
+            () => _navigateTo(context, const AssignSchedule()),
             title: 'Assign Schedule',
           ),
-
-          // Section: Students
-          IntrinsicHeight(
-            child: Row(
-              children: const <Widget>[
-                Padding(
-                  padding: EdgeInsetsGeometry.symmetric(
-                    vertical: 10,
-                    horizontal: 16,
-                  ),
-                  child: Text(
-                    'Students',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
-                ),
-                Expanded(child: Divider(color: Colors.black, thickness: 1)),
-              ],
-            ),
-          ),
+          _buildSectionHeader('Students'),
           _buildMenuItem(
             context,
             Icons.view_list_outlined,
-            () => _NavigateTo(context, const ViewsStudent()),
+            () => _navigateTo(context, const ViewsStudent()),
             title: 'Views Student',
           ),
           _buildMenuItem(
             context,
             Icons.group_add_outlined,
-            () => _NavigateTo(context, const AddStudent()),
+            () => _navigateTo(context, const AddStudent()),
             title: 'Add Student',
           ),
-
-          // Section: Setting
-          IntrinsicHeight(
-            child: Row(
-              children: const <Widget>[
-                Padding(
-                  padding: EdgeInsetsGeometry.symmetric(
-                    vertical: 10,
-                    horizontal: 16,
-                  ),
-                  child: Text(
-                    'Setting',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
-                ),
-                Expanded(child: Divider(color: Colors.black, thickness: 1)),
-              ],
-            ),
-          ),
+          _buildSectionHeader('Setting'),
           _buildMenuItem(
             context,
             Icons.bar_chart_outlined,
-            () => _NavigateTo(context, const ReportingScreen()),
+            () => _navigateTo(context, const ReportingScreen()),
             title: 'Report Area',
           ),
           _buildMenuItem(
             context,
             Icons.lock_outline,
-            () => _NavigateTo(context, const ChangePasswordScreen()),
+            () => _navigateTo(context, const ChangePasswordScreen()),
             title: 'Change Password',
           ),
-          // Logout Button
           _buildMenuItem(
             context,
             Icons.logout,
@@ -205,15 +145,32 @@ class _NavigetionMenuState extends State<NavigetionMenu> {
     );
   }
 
+  Widget _buildSectionHeader(String title) {
+    return IntrinsicHeight(
+      child: Row(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+            child: Text(
+              title,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+          ),
+          const Expanded(child: Divider(color: Colors.black, thickness: 1)),
+        ],
+      ),
+    );
+  }
+
   Widget _buildDrawerHeader() {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 60, 20, 30),
       child: Column(
         children: [
-          CircleAvatar(
+          const CircleAvatar(
             radius: 45,
             backgroundColor: Colors.white,
-            child: const Icon(Icons.school, size: 50, color: Colors.blue),
+            child: Icon(Icons.school, size: 50, color: Colors.blue),
           ),
           const SizedBox(height: 16),
           Text(
@@ -237,30 +194,21 @@ class _NavigetionMenuState extends State<NavigetionMenu> {
   Widget _buildMenuItem(
     BuildContext context,
     IconData icon,
-    dynamic titleOrCallback, {
+    VoidCallback onTap, {
     String? title,
     Color color = Colors.black87,
   }) {
-    String displayTitle =
-        title ?? (titleOrCallback is String ? titleOrCallback : '');
-    VoidCallback onTapCallback = titleOrCallback is VoidCallback
-        ? titleOrCallback
-        : () {
-            _confirmLogout(context);
-          };
-
     return Center(
       child: ListTile(
         leading: Icon(icon, color: color),
-        title: Text(displayTitle, style: TextStyle(color: color, fontSize: 15)),
-        onTap: onTapCallback,
+        title: Text(title ?? '', style: TextStyle(color: color, fontSize: 15)),
+        onTap: onTap,
       ),
     );
   }
 
-  // ignore: non_constant_identifier_names
-  void _NavigateTo(BuildContext context, Widget page) {
-    Navigator.pop(context); // Close drawer before pushing new screen
+  void _navigateTo(BuildContext context, Widget page) {
+    Navigator.pop(context);
     Navigator.push(context, MaterialPageRoute(builder: (context) => page));
   }
 }
