@@ -26,8 +26,7 @@ class _AddStudentState extends State<AddStudent> {
   int? _currentUserId;
 
   // Controllers
-  final TextEditingController _rollNoCtrl =
-      TextEditingController();
+  final TextEditingController _rollNoCtrl = TextEditingController();
   final TextEditingController _nameKhCtrl = TextEditingController();
   final TextEditingController _nameEnCtrl = TextEditingController();
   final TextEditingController _stuNameCtrl = TextEditingController();
@@ -51,20 +50,40 @@ class _AddStudentState extends State<AddStudent> {
     _fetchUserId();
   }
 
-  // Fix: Show only the ID number (e.g., 1)
+  // --- NEW FORMATTING LOGIC ---
+  String _formatID(dynamic id) {
+    if (id == null) return "UTB---";
+    // Converts number to 3-digit padded string (e.g., 1 -> 001)
+    String numericPart = id.toString().padLeft(3, '0');
+    return "UTB$numericPart";
+  }
+
   Future<void> _fetchUserId() async {
     final prefs = await SharedPreferences.getInstance();
+
+    // Try reading as int first
     int? id = prefs.getInt('USER_ID_KEY');
+
+    // Fallback to reading as String if int is null
+    if (id == null) {
+      String? idStr = prefs.getString('USER_ID_KEY');
+      if (idStr != null) id = int.tryParse(idStr);
+    }
+
     if (id != null) {
-      setState(() {
-        _currentUserId = id;
-        _rollNoCtrl.text = id.toString();
-      });
+      if (mounted) {
+        setState(() {
+          _currentUserId = id;
+          // Apply formatting here: Displays UTB001
+          _rollNoCtrl.text = _formatID(id);
+        });
+      }
+    } else {
+      _rollNoCtrl.text = "ID Missing";
     }
   }
 
   Future<void> _handleSave() async {
-    // 1. Validation - Ensure required fields are not empty
     if (_nameEnCtrl.text.isEmpty ||
         _emailCtrl.text.isEmpty ||
         _passwordCtrl.text.isEmpty) {
@@ -78,28 +97,24 @@ class _AddStudentState extends State<AddStudent> {
       final prefs = await SharedPreferences.getInstance();
       String? token = prefs.getString('TOKEN');
 
-      // Use your specific local IP or 10.0.2.2 for Emulator
       var request = http.MultipartRequest(
         'POST',
         Uri.parse('http://10.0.2.2:8000/api/students'),
       );
 
-      // 2. CRITICAL HEADERS (Postman adds these automatically, Flutter needs them)
       request.headers.addAll({
         "Authorization": "Bearer $token",
-        "Accept": "application/json", // This prevents the 500 redirect error
+        "Accept": "application/json",
       });
 
-      // 3. ADD FIELDS (Must match your Postman keys exactly)
       request.fields.addAll({
-        'UserID':
-            _currentUserId?.toString() ?? "1", // Ensure this is a valid ID
-        'StuName':
-            "${_nameEnCtrl.text} (${_nameKhCtrl.text})", // Matches Postman style
+        // IMPORTANT: We send the raw number (_currentUserId) to the server
+        'UserID': _currentUserId?.toString() ?? "1",
+        'StuName': "${_nameEnCtrl.text} (${_nameKhCtrl.text})",
         'StuNameKH': _nameKhCtrl.text,
         'StuNameEN': _nameEnCtrl.text,
-        'Gender': _selectedGender, // e.g., "Male"
-        'DOB': _dobCtrl.text, // e.g., "2008-01-01"
+        'Gender': _selectedGender,
+        'DOB': _dobCtrl.text,
         'POB': _pobCtrl.text,
         'Address': _addressCtrl.text,
         'Phone': _phoneCtrl.text,
@@ -111,18 +126,16 @@ class _AddStudentState extends State<AddStudent> {
         'MotherName': _motherNameCtrl.text,
         'MotherJob': _motherJobCtrl.text,
         'FamilyContact': _familyContactCtrl.text,
-        'Status': "1", // Sending as String "1" (Laravel handles it)
+        'Status': _selectedStatus,
         'IsDeleted': "0",
       });
 
-      // 4. ADD PHOTO (Key must be 'Photo' with capital P)
       if (_imageFile != null) {
         request.files.add(
           await http.MultipartFile.fromPath('Photo', _imageFile!.path),
         );
       }
 
-      // 5. SEND AND CAPTURE RESPONSE
       var streamedResponse = await request.send();
       var response = await http.Response.fromStream(streamedResponse);
 
@@ -130,12 +143,9 @@ class _AddStudentState extends State<AddStudent> {
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         EasyLoading.showSuccess("Registered Successfully!");
-        Navigator.pop(context, true); // Return true to refresh the list
+        Navigator.pop(context, true);
       } else {
-        // THIS IS THE MOST IMPORTANT PART FOR DEBUGGING
         print("FULL ERROR FROM SERVER: ${response.body}");
-
-        // If the error is 422, it's a validation error (e.g., Email already exists)
         if (response.statusCode == 422) {
           EasyLoading.showError("Email already taken or Data invalid");
         } else {
@@ -148,6 +158,8 @@ class _AddStudentState extends State<AddStudent> {
       EasyLoading.showError("Could not connect to server");
     }
   }
+
+  // ... (Rest of your UI methods: _buildPersonalInfo, _buildFamilyInfo, etc. stay the same)
 
   @override
   Widget build(BuildContext context) {
@@ -230,8 +242,7 @@ class _AddStudentState extends State<AddStudent> {
     ],
   );
 
-  // --- UI Components ---
-
+  // UI Components
   Widget _buildTextField({
     required String hint,
     TextEditingController? controller,
