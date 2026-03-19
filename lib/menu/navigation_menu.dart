@@ -80,83 +80,109 @@ class _NavigationMenuState extends State<NavigationMenu> {
     return Drawer(
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.only(
-          topRight: Radius.circular(30),
-          bottomRight: Radius.circular(30),
+          topRight: Radius.circular(24),
+          bottomRight: Radius.circular(24),
         ),
       ),
-      child: ListView(
-        padding: EdgeInsets.zero,
-        children: [
-          _buildDrawerHeader(),
-          _buildSectionHeader('Teacher'),
-          _buildMenuItem(
-            context,
-            Icons.view_list_outlined,
-            () => _navigateTo(context, const ViewsTeacher()),
-            title: 'Views Teacher',
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.white,
+              Colors.grey.shade50,
+            ],
           ),
-          _buildMenuItem(
-            context,
-            Icons.person_add_outlined,
-            () => _navigateTo(context, const AddTeacher()),
-            title: 'Add Teacher',
-          ),
-          _buildMenuItem(
-            context,
-            Icons.calendar_today_outlined,
-            () => _navigateTo(context, const AssignSchedule()),
-            title: 'Assign Schedule',
-          ),
-          _buildSectionHeader('Students'),
-          _buildMenuItem(
-            context,
-            Icons.view_list_outlined,
-            () => _navigateTo(context, const ViewsStudent()),
-            title: 'Views Student',
-          ),
-          _buildMenuItem(
-            context,
-            Icons.group_add_outlined,
-            () => _navigateTo(context, const AddStudent()),
-            title: 'Add Student',
-          ),
-          _buildSectionHeader('Setting'),
-          _buildMenuItem(
-            context,
-            Icons.bar_chart_outlined,
-            () => _navigateTo(context, const ReportingScreen()),
-            title: 'Report Area',
-          ),
-          _buildMenuItem(
-            context,
-            Icons.lock_outline,
-            () => _navigateTo(context, const ChangePasswordScreen()),
-            title: 'Change Password',
-          ),
-          _buildMenuItem(
-            context,
-            Icons.logout,
-            () => _confirmLogout(context),
-            title: 'Logout',
-            color: Colors.red,
-          ),
-        ],
+        ),
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            _buildDrawerHeader(),
+            const SizedBox(height: 8),
+            _buildSectionHeader('Teacher'),
+            _buildMenuItem(
+              context,
+              Icons.view_list_outlined,
+              () => _navigateTo(context, const ViewsTeacher()),
+              title: 'Views Teacher',
+            ),
+            _buildMenuItem(
+              context,
+              Icons.person_add_outlined,
+              () => _navigateTo(context, const AddTeacher()),
+              title: 'Add Teacher',
+            ),
+            _buildMenuItem(
+              context,
+              Icons.calendar_today_outlined,
+              () => _navigateTo(context, const AssignSchedule()),
+              title: 'Assign Schedule',
+            ),
+            const SizedBox(height: 8),
+            _buildSectionHeader('Students'),
+            _buildMenuItem(
+              context,
+              Icons.view_list_outlined,
+              () => _navigateTo(context, const ViewsStudent()),
+              title: 'Views Student',
+            ),
+            _buildMenuItem(
+              context,
+              Icons.group_add_outlined,
+              () => _navigateTo(context, const AddStudent()),
+              title: 'Add Student',
+            ),
+            const SizedBox(height: 8),
+            _buildSectionHeader('Setting'),
+            _buildMenuItem(
+              context,
+              Icons.bar_chart_outlined,
+              () => _navigateTo(context, const ReportingScreen()),
+              title: 'Report Area',
+            ),
+            _buildMenuItem(
+              context,
+              Icons.lock_outline,
+              () => _navigateTo(context, const ChangePasswordScreen()),
+              title: 'Change Password',
+            ),
+            const SizedBox(height: 16),
+            _buildMenuItem(
+              context,
+              Icons.logout,
+              () => _confirmLogout(context),
+              title: 'Logout',
+              color: Colors.red.shade700,
+            ),
+            const SizedBox(height: 24),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildSectionHeader(String title) {
-    return IntrinsicHeight(
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
       child: Row(
         children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-            child: Text(
-              title,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          Text(
+            title,
+            style: TextStyle(
+              fontWeight: FontWeight.bold, 
+              fontSize: 13,
+              color: Colors.grey.shade600,
+              letterSpacing: 1.2,
             ),
           ),
-          const Expanded(child: Divider(color: Colors.black, thickness: 1)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Divider(
+              color: Colors.grey.shade300, 
+              thickness: 1,
+            ),
+          ),
         ],
       ),
     );
@@ -164,13 +190,30 @@ class _NavigationMenuState extends State<NavigationMenu> {
 
   Widget _buildDrawerHeader() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 60, 20, 30),
+      padding: const EdgeInsets.fromLTRB(20, 56, 20, 28),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            const Color(0xFF4A5BF6),
+            const Color(0xFF6B7BFF),
+          ],
+        ),
+      ),
       child: Column(
         children: [
-          const CircleAvatar(
-            radius: 45,
-            backgroundColor: Colors.white,
-            child: Icon(Icons.school, size: 50, color: Colors.blue),
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withOpacity(0.2),
+            ),
+            child: const CircleAvatar(
+              radius: 42,
+              backgroundColor: Colors.white,
+              child: Icon(Icons.school, size: 44, color: Color(0xFF4A5BF6)),
+            ),
           ),
           const SizedBox(height: 16),
           Text(
@@ -178,13 +221,17 @@ class _NavigationMenuState extends State<NavigationMenu> {
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF003366),
+              color: Colors.white,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             role ?? 'BUDDHIST HIGH SCHOOL',
-            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+            style: TextStyle(
+              fontSize: 12, 
+              color: Colors.white.withOpacity(0.85),
+              letterSpacing: 0.5,
+            ),
           ),
         ],
       ),
@@ -196,13 +243,56 @@ class _NavigationMenuState extends State<NavigationMenu> {
     IconData icon,
     VoidCallback onTap, {
     String? title,
-    Color color = Colors.black87,
+    Color color = const Color(0xFF374151),
   }) {
-    return Center(
-      child: ListTile(
-        leading: Icon(icon, color: color),
-        title: Text(title ?? '', style: TextStyle(color: color, fontSize: 15)),
-        onTap: onTap,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: color == Colors.red.shade700 
+                        ? Colors.red.shade50
+                        : Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    icon, 
+                    color: color == Colors.red.shade700 
+                        ? Colors.red.shade700 
+                        : const Color(0xFF4A5BF6),
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    title ?? '',
+                    style: TextStyle(
+                      color: color, 
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right,
+                  color: Colors.grey.shade400,
+                  size: 20,
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
