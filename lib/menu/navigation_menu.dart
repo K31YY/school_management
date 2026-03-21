@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
-import 'package:ungthoung_app/login_user.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:ungthoung_app/providers/auth_provider.dart';
 import 'package:ungthoung_app/menu/add_student.dart';
 import 'package:ungthoung_app/menu/add_teacher.dart';
 import 'package:ungthoung_app/menu/assign_schedule.dart';
@@ -10,47 +9,11 @@ import 'package:ungthoung_app/menu/report_area.dart';
 import 'package:ungthoung_app/menu/views_student.dart';
 import 'package:ungthoung_app/menu/views_teacher.dart';
 
-class NavigationMenu extends StatefulWidget {
+class NavigationMenu extends ConsumerWidget {
   const NavigationMenu({super.key});
 
-  @override
-  State<NavigationMenu> createState() => _NavigationMenuState();
-}
-
-class _NavigationMenuState extends State<NavigationMenu> {
-  String? fullname;
-  String? role;
-
-  /// Clears local data and forces navigation to the Login Screen
-  Future<void> _logOut(BuildContext context) async {
-    final sp = await SharedPreferences.getInstance();
-    await sp.clear();
-
-    if (!context.mounted) return;
-
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (context) => const LoginUser()),
-      (Route<dynamic> route) => false,
-    );
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    loadData();
-  }
-
-  Future<void> loadData() async {
-    final sp = await SharedPreferences.getInstance();
-    setState(() {
-      fullname = sp.getString("FULLNAME");
-      role = sp.getString("ROLE");
-    });
-  }
-
   /// Shows logout confirmation dialog
-  Future<void> _confirmLogout(BuildContext context) async {
+  Future<void> _confirmLogout(BuildContext context, WidgetRef ref) async {
     final isLogout = await showDialog<bool>(
       context: context,
       builder: (BuildContext dialogContext) => AlertDialog(
@@ -62,7 +25,9 @@ class _NavigationMenuState extends State<NavigationMenu> {
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
+            onPressed: () {
+              Navigator.of(dialogContext).pop(true);
+            },
             child: const Text('Logout', style: TextStyle(color: Colors.red)),
           ),
         ],
@@ -70,13 +35,15 @@ class _NavigationMenuState extends State<NavigationMenu> {
     );
 
     if (isLogout == true) {
-      if (!context.mounted) return;
-      await _logOut(context);
+      await ref.read(authProvider.notifier).logout();
+      // Navigation happens automatically via main.dart
     }
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final auth = ref.watch(authProvider);
+
     return Drawer(
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.only(
@@ -98,7 +65,7 @@ class _NavigationMenuState extends State<NavigationMenu> {
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            _buildDrawerHeader(),
+            _buildDrawerHeader(auth),
             const SizedBox(height: 8),
             _buildSectionHeader('Teacher'),
             _buildMenuItem(
@@ -151,7 +118,7 @@ class _NavigationMenuState extends State<NavigationMenu> {
             _buildMenuItem(
               context,
               Icons.logout,
-              () => _confirmLogout(context),
+              () => _confirmLogout(context, ref),
               title: 'Logout',
               color: Colors.red.shade700,
             ),
@@ -188,16 +155,16 @@ class _NavigationMenuState extends State<NavigationMenu> {
     );
   }
 
-  Widget _buildDrawerHeader() {
+  Widget _buildDrawerHeader(AuthState auth) {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 56, 20, 28),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            const Color(0xFF4A5BF6),
-            const Color(0xFF6B7BFF),
+            Color(0xFF4A5BF6),
+            Color(0xFF6B7BFF),
           ],
         ),
       ),
@@ -217,7 +184,7 @@ class _NavigationMenuState extends State<NavigationMenu> {
           ),
           const SizedBox(height: 16),
           Text(
-            fullname ?? 'UNG THOUNG',
+            auth.fullName ?? 'Guest User',
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -226,7 +193,7 @@ class _NavigationMenuState extends State<NavigationMenu> {
           ),
           const SizedBox(height: 4),
           Text(
-            role ?? 'BUDDHIST HIGH SCHOOL',
+            auth.role ?? 'BUDDHIST HIGH SCHOOL',
             style: TextStyle(
               fontSize: 12, 
               color: Colors.white.withOpacity(0.85),

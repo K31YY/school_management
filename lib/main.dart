@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:ungthoung_app/providers/auth_provider.dart';
 
 import 'package:ungthoung_app/app_colors.dart';
 import 'package:ungthoung_app/app_dashboard.dart';
@@ -14,13 +15,12 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
 
-  final prefs = await SharedPreferences.getInstance();
-  final token = prefs.getString('TOKEN');
-  final role = prefs.getString('ROLE');
-  final isLoggedIn = token != null && token.isNotEmpty;
-
   configLoading();
-  runApp(MyApp(isLoggedIn: isLoggedIn, role: role));
+  runApp(
+    const ProviderScope(
+      child: MyApp(),
+    ),
+  );
 }
 
 void configLoading() {
@@ -39,14 +39,13 @@ void configLoading() {
     ..dismissOnTap = false;
 }
 
-class MyApp extends StatelessWidget {
-  final bool isLoggedIn;
-  final String? role;
-
-  const MyApp({super.key, required this.isLoggedIn, this.role});
+class MyApp extends ConsumerWidget {
+  const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authProvider);
+
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Ung Thoung Buddhist High School',
@@ -68,14 +67,14 @@ class MyApp extends StatelessWidget {
           systemOverlayStyle: SystemUiOverlayStyle.light,
         ),
       ),
-      home: _getHome(),
+      home: _getHome(authState),
     );
   }
 
-  Widget _getHome() {
-    if (!isLoggedIn) return const LoginUser();
+  Widget _getHome(AuthState auth) {
+    if (!auth.isAuthenticated) return const LoginUser();
 
-    switch (role?.toLowerCase().trim()) {
+    switch (auth.role?.toLowerCase().trim()) {
       case 'admin':
         return const AdminDashboard();
       case 'teacher':
