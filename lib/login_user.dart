@@ -1,21 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
+import 'package:ungthoung_app/providers/auth_provider.dart';
+import 'package:ungthoung_app/services/api_service.dart';
 
-import 'package:ungthoung_app/app_dashboard.dart';
-import 'package:ungthoung_app/students/student_dashboard.dart';
-import 'package:ungthoung_app/teachers/teacher_dashboard.dart';
-
-class LoginUser extends StatefulWidget {
+class LoginUser extends ConsumerStatefulWidget {
   const LoginUser({super.key});
 
   @override
-  State<LoginUser> createState() => _LoginUserState();
+  ConsumerState<LoginUser> createState() => _LoginUserState();
 }
 
-class _LoginUserState extends State<LoginUser> {
+class _LoginUserState extends ConsumerState<LoginUser> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isObscured = true;
@@ -30,19 +27,13 @@ class _LoginUserState extends State<LoginUser> {
       return;
     }
 
-    final url = Uri.parse('http://10.0.2.2:8000/api/login');
-
     try {
       EasyLoading.show(status: 'Logging in...');
 
-      final response = await http.post(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: jsonEncode({'LoginKey': loginKey, 'Password': password}),
-      );
+      final response = await ref.read(apiServiceProvider).post('login', {
+        'LoginKey': loginKey,
+        'Password': password,
+      });
 
       EasyLoading.dismiss();
 
@@ -50,36 +41,18 @@ class _LoginUserState extends State<LoginUser> {
         final data = jsonDecode(response.body);
 
         if (data['success'] == true) {
-          final sp = await SharedPreferences.getInstance();
+          final userData = data['user'];
+          final uId = int.tryParse(userData?['id']?.toString() ?? "0") ?? 0;
 
-          if (data['user'] != null && data['user']['id'] != null) {
-            final uId = int.parse(data['user']['id'].toString());
-            await sp.setInt('USER_ID_KEY', uId);
-          }
-
-          await sp.setString('TOKEN', data['token'] ?? "");
-          await sp.setString('ROLE', data['role'] ?? "");
-          await sp.setString('FULLNAME', data['display_name'] ?? "User");
+          await ref.read(authProvider.notifier).updateAuth(
+                token: data['token'] ?? "",
+                role: data['role'] ?? "",
+                fullName: data['display_name'] ?? "User",
+                userId: uId,
+              );
 
           EasyLoading.showSuccess('Welcome!');
-
-          final role = data['role']?.toString().toLowerCase() ?? "";
-          Widget nextScreen;
-
-          if (role == 'admin') {
-            nextScreen = const AdminDashboard();
-          } else if (role == 'teacher') {
-            nextScreen = const TeacherDashboard();
-          } else {
-            nextScreen = const StudentDashboard();
-          }
-
-          if (!mounted) return;
-
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => nextScreen),
-          );
+          // Navigation happens automatically via main.dart watching authProvider
         } else {
           EasyLoading.showError(data['message'] ?? 'Login failed!');
         }
