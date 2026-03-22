@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:convert';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
+
+// Ensure these paths match your project structure exactly
 import 'package:ungthoung_app/providers/auth_provider.dart';
 import 'package:ungthoung_app/services/api_service.dart';
 
@@ -40,19 +42,30 @@ class _LoginUserState extends ConsumerState<LoginUser> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
 
+        // Inside loginUser() after successful API call
         if (data['success'] == true) {
           final userData = data['user'];
-          final uId = int.tryParse(userData?['id']?.toString() ?? "0") ?? 0;
 
-          await ref.read(authProvider.notifier).updateAuth(
-                token: data['token'] ?? "",
-                role: data['role'] ?? "",
-                fullName: data['display_name'] ?? "User",
+          // 1. Extract role carefully
+          final String role = (data['role'] ?? userData?['role'] ?? "")
+              .toString();
+          final String token = data['token'] ?? "";
+          final String fullName =
+              data['display_name'] ?? userData?['name'] ?? "User";
+          final int uId = int.tryParse(userData?['id']?.toString() ?? "0") ?? 0;
+
+          // 2. Update Global State
+          // This call tells main.dart: "Hey, we have a new user and they are an ADMIN"
+          await ref
+              .read(authProvider.notifier)
+              .updateAuth(
+                token: token,
+                role: role,
+                fullName: fullName,
                 userId: uId,
               );
+          EasyLoading.showSuccess('Welcome, $fullName!');
 
-          EasyLoading.showSuccess('Welcome!');
-          // Navigation happens automatically via main.dart watching authProvider
         } else {
           EasyLoading.showError(data['message'] ?? 'Login failed!');
         }
@@ -61,7 +74,8 @@ class _LoginUserState extends ConsumerState<LoginUser> {
       }
     } catch (e) {
       EasyLoading.dismiss();
-      EasyLoading.showError('Failed to connect to Server!');
+      debugPrint("Login Error: $e");
+      EasyLoading.showError('Connection Error: Check your backend.');
     }
   }
 
@@ -77,51 +91,30 @@ class _LoginUserState extends ConsumerState<LoginUser> {
             children: [
               Icon(Icons.school_rounded, size: 100, color: _primaryColor),
               const SizedBox(height: 10),
-              const Text(
+              Text(
                 "Ung Thoung Buddhist",
                 style: TextStyle(
-                  color: Colors.grey,
-                  fontWeight: FontWeight.w500,
-                  fontSize: 18,),
+                  color: Colors.grey[800],
+                  fontWeight: FontWeight.bold,
+                  fontSize: 22,
+                ),
               ),
               const Text(
                 "High School Management System",
                 style: TextStyle(color: Colors.grey),
               ),
               const SizedBox(height: 50),
-              TextField(
+              _buildTextField(
                 controller: _usernameController,
-                decoration: InputDecoration(
-                  labelText: "Username or Email",
-                  prefixIcon: const Icon(Icons.person_outline),
-                  filled: true,
-                  fillColor: Colors.grey[100],
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(15),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
+                label: "Username or Email",
+                icon: Icons.person_outline,
               ),
               const SizedBox(height: 20),
-              TextField(
+              _buildTextField(
                 controller: _passwordController,
-                obscureText: _isObscured,
-                decoration: InputDecoration(
-                  labelText: "Password",
-                  prefixIcon: const Icon(Icons.lock_outline),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _isObscured ? Icons.visibility : Icons.visibility_off,
-                    ),
-                    onPressed: () => setState(() => _isObscured = !_isObscured),
-                  ),
-                  filled: true,
-                  fillColor: Colors.grey[100],
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(15),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
+                label: "Password",
+                icon: Icons.lock_outline,
+                isPassword: true,
               ),
               const SizedBox(height: 40),
               SizedBox(
@@ -148,6 +141,36 @@ class _LoginUserState extends ConsumerState<LoginUser> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    bool isPassword = false,
+  }) {
+    return TextField(
+      controller: controller,
+      obscureText: isPassword ? _isObscured : false,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon),
+        suffixIcon: isPassword
+            ? IconButton(
+                icon: Icon(
+                  _isObscured ? Icons.visibility : Icons.visibility_off,
+                ),
+                onPressed: () => setState(() => _isObscured = !_isObscured),
+              )
+            : null,
+        filled: true,
+        fillColor: Colors.grey[100],
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: BorderSide.none,
         ),
       ),
     );
