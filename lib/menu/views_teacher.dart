@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:ungthoung_app/menu/add_teacher.dart';
 
 class ViewsTeacher extends StatefulWidget {
@@ -16,6 +17,7 @@ class _ViewsTeacherState extends State<ViewsTeacher> {
   bool _isLoading = true;
   String _searchQuery = "";
 
+  // Configuration - Ensure 10.0.2.2 is correct for Android Emulator
   final String apiUrl = 'http://10.0.2.2:8000/api/teachers';
   final String bearerToken =
       "45|ExnLDDVzgQTUgxm9lEdkkJ6ulK4r152L8ksG2JJe24a49b3a";
@@ -26,8 +28,8 @@ class _ViewsTeacherState extends State<ViewsTeacher> {
     _fetchTeachers();
   }
 
+  // GET: Fetch all teachers
   Future<void> _fetchTeachers() async {
-    // Only call setState if the widget is still in the tree
     if (!mounted) return;
     setState(() => _isLoading = true);
 
@@ -40,7 +42,7 @@ class _ViewsTeacherState extends State<ViewsTeacher> {
         },
       );
 
-      if (response.statusCode == 200) { 
+      if (response.statusCode == 200) {
         final Map<String, dynamic> decodedData = json.decode(response.body);
         if (decodedData['success'] == true && mounted) {
           setState(() {
@@ -48,16 +50,67 @@ class _ViewsTeacherState extends State<ViewsTeacher> {
             _filteredTeachers = _allTeachers;
           });
         }
-      } else {  
-        debugPrint("Server Error: ${response.statusCode}");
       }
     } catch (e) {
-      debugPrint("Error fetching teachers: $e");
+      debugPrint("Fetch Error: $e");
     } finally {
-      // CRITICAL FIX: Always check mounted before ending loading state
-      if (mounted) {
-        setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  // PUT: Update teacher details
+  Future<void> _updateTeacher(String id, String newName) async {
+    try {
+      EasyLoading.show(status: 'Updating...');
+
+      final response = await http.put(
+        Uri.parse('$apiUrl/$id'),
+        headers: {
+          "Authorization": "Bearer $bearerToken",
+          "Content-Type": "application/json", // Required for PUT/POST bodies
+          "Accept": "application/json",
+        },
+        body: jsonEncode({"TeacherName": newName}),
+      );
+
+      EasyLoading.dismiss();
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          EasyLoading.showSuccess("Updated!");
+          _fetchTeachers(); // Refresh list
+        }
+      } else {
+        EasyLoading.showError("Update failed: ${response.statusCode}");
       }
+    } catch (e) {
+      EasyLoading.dismiss();
+      EasyLoading.showError("Connection Error");
+    }
+  }
+
+  // DELETE: Remove teacher
+  Future<void> _deleteTeacher(String id) async {
+    try {
+      EasyLoading.show(status: 'Deleting...');
+      final response = await http.delete(
+        Uri.parse('$apiUrl/$id'),
+        headers: {
+          "Authorization": "Bearer $bearerToken",
+          "Accept": "application/json",
+        },
+      );
+
+      EasyLoading.dismiss();
+
+      if (response.statusCode == 200) {
+        _fetchTeachers();
+        EasyLoading.showSuccess("Deleted");
+      }
+    } catch (e) {
+      EasyLoading.dismiss();
+      debugPrint("Delete error: $e");
     }
   }
 
@@ -66,8 +119,7 @@ class _ViewsTeacherState extends State<ViewsTeacher> {
     setState(() {
       _filteredTeachers = _allTeachers.where((teacher) {
         final name = (teacher['TeacherName'] ?? "").toString().toLowerCase();
-        final matchesSearch = name.contains(_searchQuery.toLowerCase());
-        return matchesSearch;
+        return name.contains(_searchQuery.toLowerCase());
       }).toList();
     });
   }
@@ -96,50 +148,15 @@ class _ViewsTeacherState extends State<ViewsTeacher> {
       ),
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 25, 12, 10),
-            child: TextField(
-              onChanged: (value) {
-                _searchQuery = value;
-                _filterLogic();
-              },
-              decoration: InputDecoration(
-                hintText: "Search teacher name...",
-                prefixIcon: const Icon(Icons.search),
-                filled: true,
-                fillColor: Colors.white,
-                contentPadding: EdgeInsets.zero,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(25),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-            ),
-          ),
+          _buildSearchBar(),
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : RefreshIndicator(
                     onRefresh: _fetchTeachers,
                     child: _filteredTeachers.isEmpty
-                        ? ListView(
-                            // Use ListView so RefreshIndicator still works
-                            children: const [
-                              SizedBox(height: 100),
-                              Center(child: Text("Not found any teacher")),
-                            ],
-                          )
-                        : ListView.builder(
-                            itemCount: _filteredTeachers.length,
-                            padding: const EdgeInsets.only(bottom: 20),
-                            itemBuilder: (context, index) {
-                              final t = _filteredTeachers[index];
-                              return _buildTeacherCard(
-                                t['TeacherName'] ?? 'No Name',
-                                t['TeacherID']?.toString() ?? 'N/A',
-                              );
-                            },
-                          ),
+                        ? _buildEmptyState()
+                        : _buildTeacherList(),
                   ),
           ),
         ],
@@ -147,7 +164,53 @@ class _ViewsTeacherState extends State<ViewsTeacher> {
     );
   }
 
-  Widget _buildTeacherCard(String name, String id) {
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 25, 12, 10),
+      child: TextField(
+        onChanged: (value) {
+          _searchQuery = value;
+          _filterLogic();
+        },
+        decoration: InputDecoration(
+          hintText: "Search teacher name...",
+          prefixIcon: const Icon(Icons.search),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: EdgeInsets.zero,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(25),
+            borderSide: BorderSide.none,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return ListView(
+      children: const [
+        SizedBox(height: 100),
+        Center(child: Text("Not found any teacher")),
+      ],
+    );
+  }
+
+  Widget _buildTeacherList() {
+    return ListView.builder(
+      itemCount: _filteredTeachers.length,
+      padding: const EdgeInsets.only(bottom: 20),
+      itemBuilder: (context, index) {
+        final t = _filteredTeachers[index];
+        return _buildTeacherCard(t);
+      },
+    );
+  }
+
+  Widget _buildTeacherCard(dynamic teacher) {
+    final String name = teacher['TeacherName'] ?? 'No Name';
+    final String id = teacher['TeacherID']?.toString() ?? '';
+
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       elevation: 0.5,
@@ -157,19 +220,91 @@ class _ViewsTeacherState extends State<ViewsTeacher> {
       ),
       child: ListTile(
         leading: const CircleAvatar(
-          backgroundColor: Color(0xFF0066FF), // Success green
+          backgroundColor: Color(0xFF0066FF),
           child: Icon(Icons.person, color: Colors.white),
         ),
         title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
         subtitle: Text("ID: $id", style: TextStyle(color: Colors.grey[600])),
-        trailing: const Icon(
-          Icons.arrow_forward_ios,
-          size: 14,
-          color: Colors.grey,
+        trailing: PopupMenuButton<String>(
+          icon: const Icon(Icons.more_vert, color: Colors.grey),
+          onSelected: (value) {
+            if (value == 'edit') {
+              _showUpdateDialog(id, name);
+            } else if (value == 'delete') {
+              _showDeleteDialog(id, name);
+            }
+          },
+          itemBuilder: (context) => [
+            const PopupMenuItem(
+              value: 'edit',
+              child: ListTile(
+                leading: Icon(Icons.edit, color: Colors.blue, size: 20),
+                title: Text("Update"),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'delete',
+              child: ListTile(
+                leading: Icon(Icons.delete, color: Colors.red, size: 20),
+                title: Text("Delete"),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+          ],
         ),
-        onTap: () {
-          // Add navigation to Teacher Details here if needed
-        },
+      ),
+    );
+  }
+
+  void _showUpdateDialog(String id, String currentName) {
+    final TextEditingController editController = TextEditingController(
+      text: currentName,
+    );
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Update Teacher"),
+        content: TextField(
+          controller: editController,
+          decoration: const InputDecoration(labelText: "Full Name"),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _updateTeacher(id, editController.text.trim());
+            },
+            child: const Text("Save"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteDialog(String id, String name) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Confirm Delete"),
+        content: Text("Delete $name permanently?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _deleteTeacher(id);
+            },
+            child: const Text("Delete", style: TextStyle(color: Colors.red)),
+          ),
+        ],
       ),
     );
   }

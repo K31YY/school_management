@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
+// Navigation Imports
 import 'package:ungthoung_app/menu/assign_schedule.dart';
 import 'package:ungthoung_app/menu/navigation_menu.dart';
 import 'package:ungthoung_app/menu/report_area.dart';
@@ -20,30 +21,58 @@ class AdminDashboard extends StatefulWidget {
 
 class _AdminDashboardState extends State<AdminDashboard> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
   int _teacherCount = 0;
   int _studentCount = 0;
   bool _isLoading = true;
+  String _displayName = "Admin";
+  String _userRole = ""; // Added to track role
 
   @override
   void initState() {
     super.initState();
-    _fetchDashboardData();
+    _initializeDashboard();
+  }
+
+  Future<void> _initializeDashboard() async {
+    await _loadUserData();
+    if (_userRole.toLowerCase().contains('admin')) {
+      await _fetchDashboardData();
+    } else {
+      debugPrint(
+        "Warning: User is accessing AdminDashboard with role: $_userRole",
+      );
+    }
+  }
+
+  Future<void> _loadUserData() async {
+    final sp = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      _displayName = sp.getString('FULLNAME') ?? "Admin User";
+      _userRole = sp.getString('ROLE') ?? ""; // Load role from storage
+    });
   }
 
   Future<void> _fetchDashboardData() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
 
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('TOKEN');
 
-      final response = await http.get(
-        Uri.parse('http://10.0.2.2:8000/api/dashboard-counts'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Accept': 'application/json',
-        },
-      );
+      final response = await http
+          .get(
+            Uri.parse('http://10.0.2.2:8000/api/dashboard-counts'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Accept': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (!mounted) return;
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -53,217 +82,141 @@ class _AdminDashboardState extends State<AdminDashboard> {
           _isLoading = false;
         });
       } else {
-        setState(() => _isLoading = false);
+        if (mounted) setState(() => _isLoading = false);
       }
     } catch (e) {
-      setState(() => _isLoading = false);
+      debugPrint("Dashboard Fetch Error: $e");
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  Future<String> _getUserName() async {
-    final sp = await SharedPreferences.getInstance();
-    return sp.getString('FULLNAME') ?? "Guest User";
-  }
-
-  String getGreeting() {
-    final hour = DateTime.now().hour;
-
-    if (hour >= 12 && hour < 17) return 'Good Afternoon!';
-
-    if (hour >= 17 && hour <= 24) return 'Good Evening!';
-
-    return 'Good Morning!';
+  // Helper for Clean Navigation
+  void _navigateTo(Widget screen) {
+    Navigator.push(context, MaterialPageRoute(builder: (context) => screen));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       key: _scaffoldKey,
-
       backgroundColor: const Color(0xFFF4F6F8),
-
       drawer: const NavigationMenu(),
-
       body: RefreshIndicator(
         onRefresh: _fetchDashboardData,
-
-        child: FutureBuilder<String>(
-          future: _getUserName(),
-
-          builder: (context, snapshot) {
-            String name = snapshot.data ?? "Guest User";
-
-            String welcomeMessage = getGreeting();
-
-            return SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-
-              child: Column(
-                children: [
-                  _buildHeader(context, name, welcomeMessage),
-
-                  _buildBody(context),
-                ],
-              ),
-            );
-          },
+        color: const Color(0xFF4A5BF6),
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Column(children: [_buildHeader(), _buildBody()]),
         ),
       ),
     );
   }
 
-  Widget _buildHeader(
-    BuildContext context,
+  Widget _buildHeader() {
+    final hour = DateTime.now().hour;
+    String greeting = hour < 12
+        ? 'Good Morning!'
+        : hour < 17
+        ? 'Good Afternoon!'
+        : 'Good Evening!';
 
-    String displayName,
-
-    String greetingText,
-  ) {
     return SizedBox(
       height: 220,
-
       child: Stack(
         clipBehavior: Clip.none,
-
         alignment: Alignment.topCenter,
-
         children: [
           Container(
             height: 180,
-
             width: double.infinity,
-
             decoration: const BoxDecoration(
               color: Color(0xFF4A5BF6),
-
               borderRadius: BorderRadius.only(
                 bottomLeft: Radius.circular(30),
-
                 bottomRight: Radius.circular(30),
               ),
             ),
-
             child: SafeArea(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
-
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-
                   children: [
                     IconButton(
                       icon: const Icon(
                         Icons.menu,
-
                         color: Colors.white,
-
                         size: 30,
                       ),
-
                       onPressed: () => _scaffoldKey.currentState?.openDrawer(),
                     ),
-
                     const Text(
                       'Ung Thoung Buddhist\nHigh School',
-
                       textAlign: TextAlign.center,
-
                       style: TextStyle(
                         color: Colors.white,
-
                         fontSize: 18,
-
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-
                     IconButton(
                       icon: const Icon(
                         Icons.notifications,
-
                         size: 28,
-
                         color: Colors.white,
                       ),
-
-                      onPressed: () => Navigator.push(
-                        context,
-
-                        MaterialPageRoute(
-                          builder: (context) => const NotificationScreen(),
-                        ),
-                      ),
+                      onPressed: () => _navigateTo(const NotificationScreen()),
                     ),
                   ],
                 ),
               ),
             ),
           ),
-
           Positioned(
             top: 120,
-
             left: 20,
-
             right: 20,
-
             child: Container(
               padding: const EdgeInsets.all(16.0),
-
               decoration: BoxDecoration(
                 color: Colors.white,
-
                 borderRadius: BorderRadius.circular(20.0),
-
                 boxShadow: const [
                   BoxShadow(
                     color: Colors.black12,
-
                     blurRadius: 10,
-
                     offset: Offset(0, 5),
                   ),
                 ],
               ),
-
               child: Row(
                 children: [
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-
                       children: [
                         Text(
-                          greetingText,
-
+                          greeting,
                           style: const TextStyle(
                             color: Colors.grey,
-
-                            fontSize: 14,
+                            fontSize: 13,
                           ),
                         ),
-
                         const SizedBox(height: 4),
-
                         Text(
-                          displayName,
-
+                          _displayName,
                           style: const TextStyle(
-                            color: Colors.black,
-
-                            fontSize: 20,
-
+                            fontSize: 18,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                       ],
                     ),
                   ),
-
                   const CircleAvatar(
-                    radius: 30,
-
-                    backgroundImage: AssetImage('assets/images/profile.jpg'),
+                    radius: 25,
+                    backgroundColor: Color(0xFF4A5BF6),
+                    child: Icon(Icons.person, color: Colors.white),
                   ),
                 ],
               ),
@@ -274,10 +227,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  Widget _buildBody(BuildContext context) {
+  Widget _buildBody() {
     return Padding(
       padding: const EdgeInsets.all(20.0),
-
       child: Column(
         children: [
           Row(
@@ -285,119 +237,73 @@ class _AdminDashboardState extends State<AdminDashboard> {
               Expanded(
                 child: _buildInfoCard(
                   'Teachers',
-
                   _isLoading ? '...' : '$_teacherCount',
-
                   Icons.groups,
-
                   const Color(0xFFE3E6FD),
-
                   const Color(0xFF4A5BF6),
                 ),
               ),
-
-              const SizedBox(width: 20),
-
+              const SizedBox(width: 15),
               Expanded(
                 child: _buildInfoCard(
                   'Students',
-
                   _isLoading ? '...' : '$_studentCount',
-
                   Icons.school,
-
                   const Color(0xFFE3E6FD),
-
                   const Color(0xFF4A5BF6),
                 ),
               ),
             ],
           ),
-
-          const SizedBox(height: 15),
-
+          const SizedBox(height: 25),
           GridView.count(
             crossAxisCount: 3,
-
             shrinkWrap: true,
-
             physics: const NeverScrollableScrollPhysics(),
-
             crossAxisSpacing: 15,
-
             mainAxisSpacing: 15,
-
             children: [
               _buildGridItem(
-                context,
-
                 'Teacher\nLists',
-
                 Icons.cast_for_education,
-
                 const Color(0xFFD4F8E6),
-
                 const Color(0xFF34C759),
+                () => _navigateTo(const ViewsTeacher()),
               ),
-
               _buildGridItem(
-                context,
-
                 'Student\nLists',
-
                 Icons.people_alt,
-
                 const Color(0xFFE3E6FD),
-
                 const Color(0xFF4A5BF6),
+                () => _navigateTo(const ViewsStudent()),
               ),
-
               _buildGridItem(
-                context,
-
                 'Subjects',
-
                 Icons.book,
-
                 const Color(0xFFFEF4DB),
-
                 const Color(0xFFFF9500),
+                () {},
               ),
-
               _buildGridItem(
-                context,
-
                 'Class',
-
                 Icons.meeting_room,
-
                 const Color(0xFFE6DFFB),
-
                 const Color(0xFF9059FF),
+                () => _navigateTo(const StuClass()),
               ),
-
               _buildGridItem(
-                context,
-
                 'Reporting',
-
                 Icons.bar_chart,
-
                 const Color(0xFFD9EEFD),
-
                 const Color(0xFF5AC8FA),
+                () => _navigateTo(const ReportingScreen()),
               ),
-
               _buildGridItem(
-                context,
-
                 'Schedule',
-
                 Icons.calendar_today,
-
                 const Color(0xFFFEDDE4),
-
                 const Color(0xFFFF3B30),
+                () => _navigateTo(const AssignSchedule()),
               ),
             ],
           ),
@@ -408,66 +314,47 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   Widget _buildInfoCard(
     String title,
-
     String count,
-
     IconData icon,
-
     Color bgColor,
-
     Color iconColor,
   ) {
     return Container(
       padding: const EdgeInsets.all(16),
-
       decoration: BoxDecoration(
         color: Colors.white,
-
         borderRadius: BorderRadius.circular(20),
-
         boxShadow: const [
           BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.05), blurRadius: 10),
         ],
       ),
-
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-
         children: [
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-
             children: [
               Text(
                 title,
-
-                style: const TextStyle(color: Colors.grey, fontSize: 13),
+                style: const TextStyle(color: Colors.grey, fontSize: 12),
               ),
-
-              const SizedBox(height: 8),
-
+              const SizedBox(height: 5),
               Text(
                 count,
-
                 style: const TextStyle(
-                  fontSize: 22,
-
+                  fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ],
           ),
-
           Container(
             padding: const EdgeInsets.all(8),
-
             decoration: BoxDecoration(
               color: bgColor,
-
               borderRadius: BorderRadius.circular(12),
             ),
-
-            child: Icon(icon, color: iconColor, size: 24),
+            child: Icon(icon, color: iconColor, size: 22),
           ),
         ],
       ),
@@ -475,84 +362,36 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   Widget _buildGridItem(
-    BuildContext context,
-
     String label,
-
     IconData icon,
-
     Color bgColor,
-
     Color iconColor,
+    VoidCallback onTap,
   ) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-
-        borderRadius: BorderRadius.circular(20),
-
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
-        ],
-      ),
-
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-
-        onTap: () {
-          if (label.contains('Teacher')) {
-            Navigator.push(
-              context,
-
-              MaterialPageRoute(builder: (context) => ViewsTeacher()),
-            );
-          } else if (label.contains('Student')) {
-            Navigator.push(
-              context,
-
-              MaterialPageRoute(builder: (context) => const ViewsStudent()),
-            );
-          } else if (label == 'Class') {
-            Navigator.push(
-              context,
-
-              MaterialPageRoute(builder: (context) => const StuClass()),
-            );
-          } else if (label == 'Reporting') {
-            Navigator.push(
-              context,
-
-              MaterialPageRoute(builder: (context) => const ReportingScreen()),
-            );
-          } else if (label == 'Schedule') {
-            Navigator.push(
-              context,
-
-              MaterialPageRoute(builder: (context) => const AssignSchedule()),
-            );
-          }
-        },
-
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
+          ],
+        ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-
           children: [
             Container(
               padding: const EdgeInsets.all(10),
-
               decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle),
-
-              child: Icon(icon, color: iconColor, size: 26),
+              child: Icon(icon, color: iconColor, size: 24),
             ),
-
             const SizedBox(height: 8),
-
             Text(
               label,
-
               textAlign: TextAlign.center,
-
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
             ),
           ],
         ),

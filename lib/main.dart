@@ -16,11 +16,7 @@ void main() async {
   await Firebase.initializeApp();
 
   configLoading();
-  runApp(
-    const ProviderScope(
-      child: MyApp(),
-    ),
-  );
+  runApp(const ProviderScope(child: MyApp()));
 }
 
 void configLoading() {
@@ -72,17 +68,29 @@ class MyApp extends ConsumerWidget {
   }
 
   Widget _getHome(AuthState auth) {
+    // 1. Loading state check (if your provider supports it)
+    if (auth.isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    // 2. Authentication check
     if (!auth.isAuthenticated) return const LoginUser();
 
-    switch (auth.role?.toLowerCase().trim()) {
-      case 'admin':
-        return const AdminDashboard();
-      case 'teacher':
-        return const TeacherDashboard();
-      case 'student':
-        return const StudentDashboard();
-      default:
-        return const LoginUser();
+    // 3. ANALYTICAL FIX: Normalize role and use .contains()
+    final String role = auth.role?.toLowerCase().trim() ?? "";
+
+    if (role.contains('admin')) {
+      // This will now catch 'admin', 'admin01', and your specific 'admin02'
+      return const AdminDashboard();
+    } else if (role.contains('teacher')) {
+      return const TeacherDashboard();
+    } else if (role.contains('student')) {
+      return const StudentDashboard();
+    } else {
+      // If the role is truly unknown, show a clear error or return to login
+      return const Scaffold(
+        body: Center(child: Text("Role Not Recognized. Please contact admin.")),
+      );
     }
   }
 }

@@ -100,14 +100,14 @@ class NavigationMenu extends ConsumerWidget {
               () => _navigateTo(context, const AddStudent()),
               title: 'Add Student',
             ),
-            const SizedBox(height: 8),
-            _buildSectionHeader('Setting'),
-            _buildMenuItem(
+             _buildMenuItem(
               context,
               Icons.bar_chart_outlined,
               () => _navigateTo(context, const ReportingScreen()),
               title: 'Report Area',
             ),
+            const SizedBox(height: 8),
+            _buildSectionHeader('Setting'),
             _buildMenuItem(
               context,
               Icons.lock_outline,
