@@ -1,8 +1,11 @@
+// ignore_for_file: avoid_print, unused_field, unnecessary_const, curly_braces_in_flow_control_structures
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ungthoung_app/menu/add_teacher.dart';
+import 'package:ungthoung_app/menu/update_teacher.dart';
 
 class ViewsTeacher extends StatefulWidget {
   const ViewsTeacher({super.key});
@@ -17,10 +20,7 @@ class _ViewsTeacherState extends State<ViewsTeacher> {
   bool _isLoading = true;
   String _searchQuery = "";
 
-  // Configuration - Ensure 10.0.2.2 is correct for Android Emulator
   final String apiUrl = 'http://10.0.2.2:8000/api/teachers';
-  final String bearerToken =
-      "45|ExnLDDVzgQTUgxm9lEdkkJ6ulK4r152L8ksG2JJe24a49b3a";
 
   @override
   void initState() {
@@ -28,16 +28,18 @@ class _ViewsTeacherState extends State<ViewsTeacher> {
     _fetchTeachers();
   }
 
-  // GET: Fetch all teachers
   Future<void> _fetchTeachers() async {
     if (!mounted) return;
     setState(() => _isLoading = true);
 
     try {
+      final prefs = await SharedPreferences.getInstance();
+      String? token = prefs.getString('TOKEN');
+
       final response = await http.get(
         Uri.parse(apiUrl),
         headers: {
-          "Authorization": "Bearer $bearerToken",
+          "Authorization": "Bearer $token",
           "Accept": "application/json",
         },
       );
@@ -58,55 +60,26 @@ class _ViewsTeacherState extends State<ViewsTeacher> {
     }
   }
 
-  // PUT: Update teacher details
-  Future<void> _updateTeacher(String id, String newName) async {
-    try {
-      EasyLoading.show(status: 'Updating...');
-
-      final response = await http.put(
-        Uri.parse('$apiUrl/$id'),
-        headers: {
-          "Authorization": "Bearer $bearerToken",
-          "Content-Type": "application/json", // Required for PUT/POST bodies
-          "Accept": "application/json",
-        },
-        body: jsonEncode({"TeacherName": newName}),
-      );
-
-      EasyLoading.dismiss();
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['success'] == true) {
-          EasyLoading.showSuccess("Updated!");
-          _fetchTeachers(); // Refresh list
-        }
-      } else {
-        EasyLoading.showError("Update failed: ${response.statusCode}");
-      }
-    } catch (e) {
-      EasyLoading.dismiss();
-      EasyLoading.showError("Connection Error");
-    }
-  }
-
-  // DELETE: Remove teacher
   Future<void> _deleteTeacher(String id) async {
     try {
       EasyLoading.show(status: 'Deleting...');
+      final prefs = await SharedPreferences.getInstance();
+      String? token = prefs.getString('TOKEN');
+
       final response = await http.delete(
         Uri.parse('$apiUrl/$id'),
         headers: {
-          "Authorization": "Bearer $bearerToken",
+          "Authorization": "Bearer $token",
           "Accept": "application/json",
         },
       );
 
       EasyLoading.dismiss();
-
       if (response.statusCode == 200) {
+        EasyLoading.showSuccess("Deleted Successfully");
         _fetchTeachers();
-        EasyLoading.showSuccess("Deleted");
+      } else {
+        EasyLoading.showError("Delete failed");
       }
     } catch (e) {
       EasyLoading.dismiss();
@@ -114,14 +87,38 @@ class _ViewsTeacherState extends State<ViewsTeacher> {
     }
   }
 
-  void _filterLogic() {
-    if (!mounted) return;
-    setState(() {
-      _filteredTeachers = _allTeachers.where((teacher) {
-        final name = (teacher['TeacherName'] ?? "").toString().toLowerCase();
-        return name.contains(_searchQuery.toLowerCase());
-      }).toList();
-    });
+  void _showDeleteDialog(dynamic teacher) {
+    final String id = (teacher['id'] ?? teacher['TeacherID']).toString();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.red),
+            SizedBox(width: 10),
+            Text("Confirm Delete"),
+          ],
+        ),
+        content: Text(
+          "Are you sure you want to delete ${teacher['TeacherName']}?",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () {
+              Navigator.pop(ctx);
+              _deleteTeacher(id);
+            },
+            child: const Text("Delete", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -129,13 +126,12 @@ class _ViewsTeacherState extends State<ViewsTeacher> {
     return Scaffold(
       backgroundColor: const Color(0xFFF2F2F7),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF007AFF),
-        elevation: 0,
-        centerTitle: true,
+        backgroundColor: const Color(0xFF4A5BF6),
         title: const Text(
-          "Teacher Lists",
+          "Teacher List",
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
+        centerTitle: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.person_add, color: Colors.white),
@@ -154,9 +150,7 @@ class _ViewsTeacherState extends State<ViewsTeacher> {
                 ? const Center(child: CircularProgressIndicator())
                 : RefreshIndicator(
                     onRefresh: _fetchTeachers,
-                    child: _filteredTeachers.isEmpty
-                        ? _buildEmptyState()
-                        : _buildTeacherList(),
+                    child: _buildTeacherList(),
                   ),
           ),
         ],
@@ -166,146 +160,116 @@ class _ViewsTeacherState extends State<ViewsTeacher> {
 
   Widget _buildSearchBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 25, 12, 10),
+      padding: const EdgeInsets.all(12.0),
       child: TextField(
-        onChanged: (value) {
-          _searchQuery = value;
-          _filterLogic();
-        },
+        onChanged: (val) => setState(() {
+          _searchQuery = val;
+          _filteredTeachers = _allTeachers
+              .where(
+                (t) => (t['TeacherName'] ?? "")
+                    .toString()
+                    .toLowerCase()
+                    .contains(val.toLowerCase()),
+              )
+              .toList();
+        }),
         decoration: InputDecoration(
-          hintText: "Search teacher name...",
-          prefixIcon: const Icon(Icons.search),
+          hintText: "Search by name...",
+          prefixIcon: const Icon(Icons.search, color: Color(0xFF4A5BF6)),
           filled: true,
           fillColor: Colors.white,
-          contentPadding: EdgeInsets.zero,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(25),
             borderSide: BorderSide.none,
           ),
+          contentPadding: const EdgeInsets.symmetric(vertical: 0),
         ),
       ),
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return ListView(
-      children: const [
-        SizedBox(height: 100),
-        Center(child: Text("Not found any teacher")),
-      ],
     );
   }
 
   Widget _buildTeacherList() {
+    if (_filteredTeachers.isEmpty)
+      return const Center(child: Text("No records found."));
+
     return ListView.builder(
       itemCount: _filteredTeachers.length,
-      padding: const EdgeInsets.only(bottom: 20),
       itemBuilder: (context, index) {
         final t = _filteredTeachers[index];
-        return _buildTeacherCard(t);
+        return Card(
+          elevation: 2,
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundColor: const Color(0xFF4A5BF6).withOpacity(0.1),
+              child: const Icon(Icons.person, color: Color(0xFF4A5BF6)),
+            ),
+            title: Text(
+              t['TeacherName'] ?? 'No Name',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            subtitle: Text("ID: ${t['id'] ?? t['TeacherID']}"),
+            trailing: PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert, color: Colors.grey),
+              onSelected: (val) {
+                if (val == 'edit') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          UpdateTeacherScreen(teacher: t, apiUrl: apiUrl),
+                    ),
+                  ).then((res) => {if (res == true) _fetchTeachers()});
+                } else if (val == 'delete') {
+                  _showDeleteDialog(t);
+                }
+              },
+              itemBuilder: (ctx) => [
+                // --- UPDATE OPTION ---
+                PopupMenuItem(
+                  value: 'edit',
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.edit_note_rounded,
+                        color: Colors.blue.shade700,
+                      ),
+                      const SizedBox(width: 10),
+                      const Text(
+                        "Update",
+                        style: TextStyle(
+                          color: Colors.blue,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // --- DELETE OPTION ---
+                const PopupMenuItem(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete_forever_rounded, color: Colors.red),
+                      const SizedBox(width: 10),
+                      Text(
+                        "Delete",
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
       },
-    );
-  }
-
-  Widget _buildTeacherCard(dynamic teacher) {
-    final String name = teacher['TeacherName'] ?? 'No Name';
-    final String id = teacher['TeacherID']?.toString() ?? '';
-
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      elevation: 0.5,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(15),
-        side: const BorderSide(color: Color(0xFFE5E5EA)),
-      ),
-      child: ListTile(
-        leading: const CircleAvatar(
-          backgroundColor: Color(0xFF0066FF),
-          child: Icon(Icons.person, color: Colors.white),
-        ),
-        title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: Text("ID: $id", style: TextStyle(color: Colors.grey[600])),
-        trailing: PopupMenuButton<String>(
-          icon: const Icon(Icons.more_vert, color: Colors.grey),
-          onSelected: (value) {
-            if (value == 'edit') {
-              _showUpdateDialog(id, name);
-            } else if (value == 'delete') {
-              _showDeleteDialog(id, name);
-            }
-          },
-          itemBuilder: (context) => [
-            const PopupMenuItem(
-              value: 'edit',
-              child: ListTile(
-                leading: Icon(Icons.edit, color: Colors.blue, size: 20),
-                title: Text("Update"),
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'delete',
-              child: ListTile(
-                leading: Icon(Icons.delete, color: Colors.red, size: 20),
-                title: Text("Delete"),
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showUpdateDialog(String id, String currentName) {
-    final TextEditingController editController = TextEditingController(
-      text: currentName,
-    );
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Update Teacher"),
-        content: TextField(
-          controller: editController,
-          decoration: const InputDecoration(labelText: "Full Name"),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _updateTeacher(id, editController.text.trim());
-            },
-            child: const Text("Save"),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showDeleteDialog(String id, String name) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Confirm Delete"),
-        content: Text("Delete $name permanently?"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _deleteTeacher(id);
-            },
-            child: const Text("Delete", style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
     );
   }
 }
