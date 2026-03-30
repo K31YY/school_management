@@ -1,211 +1,311 @@
+// ignore_for_file: library_private_types_in_public_api
+
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
 
+// --- 1. THE DATA MODEL ---
+class Room {
+  final int? roomId;
+  final String name;
+  final String location;
+  final int capacity;
+  final String status;
 
+  Room({
+    this.roomId,
+    required this.name,
+    required this.location,
+    required this.capacity,
+    required this.status,
+  });
+
+  factory Room.fromJson(Map<String, dynamic> json) {
+    return Room(
+      roomId: json['RoomID'] is int
+          ? json['RoomID']
+          : int.tryParse(json['RoomID']?.toString() ?? ''),
+      name: json['RoomName']?.toString() ?? 'Unnamed',
+      location: json['Location']?.toString() ?? 'No Location',
+      capacity: json['Capacity'] is int
+          ? json['Capacity']
+          : int.tryParse(json['Capacity']?.toString() ?? '0') ?? 0,
+      status: json['Status']?.toString() ?? "Available",
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    "RoomName": name,
+    "Location": location,
+    "Capacity": capacity,
+    "Status": status,
+  };
+}
+
+// --- 2. SCREEN IMPLEMENTATION ---
 class MyTimeClassroomScreen extends StatefulWidget {
-  const MyTimeClassroomScreen({super.key});
+  // ADDED: isReadOnly parameter to control permissions
+  final bool isReadOnly;
+
+  const MyTimeClassroomScreen({super.key, this.isReadOnly = false});
 
   @override
-  State<MyTimeClassroomScreen> createState() => _MyTimeClassroomScreenState();
+  _MyTimeClassroomScreenState createState() => _MyTimeClassroomScreenState();
 }
 
 class _MyTimeClassroomScreenState extends State<MyTimeClassroomScreen> {
-  // Colors
-  final Color primaryBlue = const Color(0xFF4A5BF6);
-  final Color backgroundGrey = const Color(0xFFF0F0F0);
-  final Color borderGreen = const Color(
-    0xFF2ECC71,
-  ); // For the selected day border
-  final Color textDark = const Color(0xFF333333);
+  final String baseUrl = "http://10.0.2.2:8000/api";
+  List<Room> roomList = [];
+  bool _isLoading = true;
 
-  // State
-  int selectedDayIndex = 0; // Default to Mon
-  final List<String> days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  @override
+  void initState() {
+    super.initState();
+    _pullRooms();
+  }
+
+  Future<Map<String, String>> _getHeaders() async {
+    final prefs = await SharedPreferences.getInstance();
+    String? token = prefs.getString('TOKEN');
+    return {
+      "Content-Type": "application/json",
+      "Accept": "application/json",
+      "Authorization": "Bearer $token",
+    };
+  }
+
+  Future<void> _pullRooms() async {
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+
+    try {
+      final response = await http
+          .get(Uri.parse("$baseUrl/rooms"), headers: await _getHeaders())
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        final List<dynamic> data = responseData['data'] ?? [];
+
+        setState(() {
+          roomList = data.map((json) => Room.fromJson(json)).toList();
+          _isLoading = false;
+        });
+      } else {
+        _handleError("Error: ${response.statusCode}");
+      }
+    } catch (e) {
+      _handleError("Connection Failed: $e");
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _handleError(String msg) {
+    debugPrint(msg);
+    EasyLoading.showError(msg);
+  }
+
+  Future<void> _insertRoom(Room newRoom) async {
+    // DOUBLE CHECK: Prevent network call if read only
+    if (widget.isReadOnly) return;
+
+    EasyLoading.show(status: 'Saving...');
+    try {
+      final response = await http.post(
+        Uri.parse("$baseUrl/rooms"),
+        headers: await _getHeaders(),
+        body: jsonEncode(newRoom.toJson()),
+      );
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        EasyLoading.showSuccess("Room Saved!");
+        if (mounted) Navigator.pop(context);
+        _pullRooms();
+      } else {
+        final errorData = json.decode(response.body);
+        EasyLoading.showError(errorData['errors']?.toString() ?? "Save Failed");
+      }
+    } catch (e) {
+      EasyLoading.showError("Network Error");
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: backgroundGrey,
       appBar: AppBar(
-        backgroundColor: primaryBlue,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            Navigator.pop(context);
-          },
-        ),
-        title: Text(
-          "My Time Classroom",
-          style: GoogleFonts.poppins(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        centerTitle: true,
+        title: Center(child: const Text("Classroom Manager")),
+        centerTitle: false,
+        // MODIFIED: Only show add button if NOT read only
+        actions: widget.isReadOnly
+            ? null
+            : [
+                IconButton(
+                  onPressed: _openRoomForm,
+                  icon: const Icon(Icons.add_circle_outline, size: 28),
+                  tooltip: "Add New Room",
+                ),
+                const SizedBox(width: 10),
+              ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: _pullRooms,
+              child: roomList.isEmpty
+                  ? const Center(
+                      child: Text(
+                        "No Rooms Found\nPull down to refresh",
+                        textAlign: TextAlign.center,
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: roomList.length,
+                      itemBuilder: (context, index) {
+                        final item = roomList[index];
+                        bool isActive =
+                            item.status.toLowerCase() == "available" ||
+                            item.status == "1";
+
+                        return Card(
+                          margin: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          elevation: 1,
+                          child: ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: isActive
+                                  ? Colors.blue.shade100
+                                  : Colors.grey.shade200,
+                              child: const Icon(
+                                Icons.meeting_room,
+                                color: Colors.blue,
+                              ),
+                            ),
+                            title: Text(
+                              item.name,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            subtitle: Text(
+                              "${item.location} • Cap: ${item.capacity}",
+                            ),
+                            trailing: Icon(
+                              Icons.circle,
+                              color: isActive ? Colors.green : Colors.red,
+                              size: 12,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+    );
+  }
+
+  void _openRoomForm() {
+    // SECURITY: Extra check to prevent opening form via other means
+    if (widget.isReadOnly) return;
+
+    final nameController = TextEditingController();
+    final locController = TextEditingController();
+    final capController = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+      ),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+          left: 25,
+          right: 25,
+          top: 25,
+        ),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // --- 1. Day Selector ---
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: List.generate(days.length, (index) {
-                  return _buildDayItem(index);
-                }),
+            const Text(
+              "Add New Room",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Colors.blueAccent,
               ),
             ),
-
             const SizedBox(height: 20),
-
-            // --- 2. Schedule List ---
-            _buildClassCard(
-              subject: "English Grade 10",
-              classroom: "Classroom 01",
-              startTime: "7:00 AM",
-              endTime: "8:00 AM",
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(
+                labelText: "Room Name",
+                prefixIcon: Icon(Icons.label_outline),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(15)),
+                ),
+              ),
             ),
-            _buildClassCard(
-              subject: "English Grade 10",
-              classroom: "Classroom 02",
-              startTime: "8:00 AM",
-              endTime: "9:00 AM",
+            const SizedBox(height: 15),
+            TextField(
+              controller: locController,
+              decoration: const InputDecoration(
+                labelText: "Location",
+                prefixIcon: Icon(Icons.location_on_outlined),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(15)),
+                ),
+              ),
             ),
-            _buildClassCard(
-              subject: "English Grade 10",
-              classroom: "Classroom 03",
-              startTime: "2:00 PM",
-              endTime: "3:00 PM",
+            const SizedBox(height: 15),
+            TextField(
+              controller: capController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: "Capacity",
+                prefixIcon: Icon(Icons.people_outline),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(15)),
+                ),
+              ),
             ),
-            _buildClassCard(
-              subject: "English Grade 10",
-              classroom: "Classroom 04",
-              startTime: "3:00 PM",
-              endTime: "4:00 PM",
+            const SizedBox(height: 25),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blueAccent,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 15),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+              ),
+              onPressed: () {
+                if (nameController.text.trim().isEmpty) {
+                  EasyLoading.showError("Room Name is required");
+                  return;
+                }
+                _insertRoom(
+                  Room(
+                    name: nameController.text,
+                    location: locController.text,
+                    capacity: int.tryParse(capController.text) ?? 0,
+                    status: "Available",
+                  ),
+                );
+              },
+              child: const Text(
+                "SAVE",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  // --- Helper Widgets ---
-
-  Widget _buildDayItem(int index) {
-    bool isSelected = selectedDayIndex == index;
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          selectedDayIndex = index;
-        });
-      },
-      child: Container(
-        width: 45,
-        height: 40,
-        decoration: BoxDecoration(
-          color: isSelected ? primaryBlue : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-          border: isSelected
-              ? Border.all(
-                  color: borderGreen,
-                  width: 2,
-                ) // Green border for selected
-              : null,
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          days[index],
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.bold,
-            color: isSelected ? Colors.white : Colors.grey[600],
-            fontSize: 12,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildClassCard({
-    required String subject,
-    required String classroom,
-    required String startTime,
-    required String endTime,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          // Left Side: Text Info
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                subject,
-                style: GoogleFonts.poppins(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15,
-                  color: textDark,
-                ),
-              ),
-              Text(
-                classroom,
-                style: GoogleFonts.poppins(
-                  color: Colors.grey[600],
-                  fontSize: 13,
-                ),
-              ),
-            ],
-          ),
-
-          // Right Side: Time Badges
-          Row(
-            children: [
-              _buildTimeBadge(startTime, isDark: true),
-              _buildTimeBadge(endTime, isDark: false),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTimeBadge(String time, {required bool isDark}) {
-    return Container(
-      // Ensure badges touch each other or have minimal spacing based on design
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      width: 65,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF555555) : const Color(0xFFE0E0E0),
-        borderRadius: isDark
-            ? const BorderRadius.horizontal(
-                left: Radius.circular(4),
-              ) // Rounded left only
-            : const BorderRadius.horizontal(
-                right: Radius.circular(4),
-              ), // Rounded right only
-      ),
-      child: Text(
-        time,
-        style: GoogleFonts.poppins(
-          fontSize: 10,
-          fontWeight: FontWeight.bold,
-          color: isDark
-              ? Colors.white
-              : Colors.white, // In image both look white text
         ),
       ),
     );

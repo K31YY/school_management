@@ -1,8 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-
-import 'package:ungthoung_app/app_dashboard.dart';
-import 'package:ungthoung_app/login_user.dart';
+import 'package:ungthoung_app/admin/app_dashboard.dart';
+import 'package:ungthoung_app/module/auth/login_user.dart';
 
 class AppAuth extends StatelessWidget {
   const AppAuth({super.key});

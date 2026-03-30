@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
-import 'package:ungthoung_app/app_colors.dart';
+import 'package:ungthoung_app/themes/app_colors.dart';
 
 class SignupUser extends StatefulWidget {
   const SignupUser({super.key});

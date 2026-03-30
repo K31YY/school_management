@@ -24,11 +24,16 @@ class UpdateStudentScreen extends StatefulWidget {
 class _UpdateStudentScreenState extends State<UpdateStudentScreen> {
   final Color _primaryBlue = const Color(0xFF4A5BF6);
   int _selectedTabIndex = 0;
-  File? _imageFile;
 
+  // --- Image State ---
+  File? _imageFile;
+  bool _isPickerActive = false; // Safety lock for ImagePicker
+
+  // --- Dropdown State ---
   late String _selectedGender;
   late String _selectedStatus;
 
+  // --- Controllers ---
   late TextEditingController _nameKhCtrl,
       _nameEnCtrl,
       _phoneCtrl,
@@ -74,41 +79,69 @@ class _UpdateStudentScreenState extends State<UpdateStudentScreen> {
       text: s['FamilyContact']?.toString() ?? "",
     );
 
-    // --- RIGOROUS DROPDOWN FIX ---
-    // 1. Handle Gender
+    // Handle Gender Logic
     String genderApi = s['Gender']?.toString() ?? "Male";
     List<String> genderOptions = ["Male", "Female", "Other"];
     _selectedGender = genderOptions.contains(genderApi) ? genderApi : "Male";
 
-    // 2. Handle Status (The cause of your crash)
-    // We convert to String and check if it exists in our allowed list ["1", "0"]
+    // Handle Status Logic
     String statusApi = s['Status']?.toString() ?? "1";
-    if (statusApi == "1" || statusApi == "0") {
-      _selectedStatus = statusApi;
-    } else {
-      _selectedStatus =
-          "1"; // Default to Active if API data is null or unexpected
+    _selectedStatus = (statusApi == "1" || statusApi == "0") ? statusApi : "1";
+  }
+
+  // --- Image Picker with Safety Guard ---
+  Future<void> _pickImage() async {
+    if (_isPickerActive) return;
+
+    setState(() => _isPickerActive = true);
+
+    try {
+      final XFile? image = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 50,
+      );
+      if (image != null) {
+        setState(() => _imageFile = File(image.path));
+      }
+    } catch (e) {
+      EasyLoading.showError("Could not open gallery");
+    } finally {
+      setState(() => _isPickerActive = false);
     }
   }
 
-  // ... (Keep _handleUpdate, _pickDate, _pickImage the same as previous code) ...
+  Future<void> _pickDate() async {
+    DateTime? p = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
+    );
+    if (p != null)
+      setState(() => _dobCtrl.text = DateFormat('yyyy-MM-dd').format(p));
+  }
 
+  // --- API Update Logic ---
   Future<void> _handleUpdate() async {
     EasyLoading.show(status: 'Updating...');
     try {
       final prefs = await SharedPreferences.getInstance();
       String? token = prefs.getString('TOKEN');
-      final String id = (widget.student['id'] ?? widget.student['StuID'])
+      // Use StuID or id depending on your API structure
+      final String id = (widget.student['StuID'] ?? widget.student['id'])
           .toString();
 
       var request = http.MultipartRequest(
-        'POST',
+        'POST', // Using POST with _method PUT for Laravel compatibility
         Uri.parse('${widget.apiUrl}/$id'),
       );
+
       request.headers.addAll({
         "Authorization": "Bearer $token",
         "Accept": "application/json",
       });
+
+      // Laravel/PHP usually requires _method override for Multipart PUT requests
       request.fields['_method'] = 'PUT';
 
       request.fields.addAll({
@@ -139,10 +172,11 @@ class _UpdateStudentScreenState extends State<UpdateStudentScreen> {
       EasyLoading.dismiss();
 
       if (res.statusCode == 200) {
-        EasyLoading.showSuccess("Updated!");
+        EasyLoading.showSuccess("Updated Successfully!");
         Navigator.pop(context, true);
       } else {
-        EasyLoading.showError("Error ${res.statusCode}");
+        print("Response Body: ${res.body}");
+        EasyLoading.showError("Update failed: ${res.statusCode}");
       }
     } catch (e) {
       EasyLoading.dismiss();
@@ -163,7 +197,7 @@ class _UpdateStudentScreenState extends State<UpdateStudentScreen> {
       ),
       body: Column(
         children: [
-          const SizedBox(height: 10),
+          const SizedBox(height: 15),
           _buildTabs(),
           Expanded(
             child: SingleChildScrollView(
@@ -183,7 +217,7 @@ class _UpdateStudentScreenState extends State<UpdateStudentScreen> {
     child: Container(
       height: 45,
       decoration: BoxDecoration(
-        color: Colors.grey[300],
+        color: Colors.grey[200],
         borderRadius: BorderRadius.circular(25),
       ),
       child: Row(children: [_tabItem("Personal", 0), _tabItem("Family", 1)]),
@@ -202,7 +236,7 @@ class _UpdateStudentScreenState extends State<UpdateStudentScreen> {
         child: Text(
           t,
           style: TextStyle(
-            color: _selectedTabIndex == i ? Colors.white : Colors.black,
+            color: _selectedTabIndex == i ? Colors.white : Colors.black54,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -213,7 +247,7 @@ class _UpdateStudentScreenState extends State<UpdateStudentScreen> {
   Widget _buildPersonalInfo() => Column(
     children: [
       _buildImagePicker(),
-      const SizedBox(height: 20),
+      const SizedBox(height: 25),
       _txt("Name (Khmer)", _nameKhCtrl),
       _txt("Name (English)", _nameEnCtrl),
       _txt("Email", _emailCtrl),
@@ -263,18 +297,21 @@ class _UpdateStudentScreenState extends State<UpdateStudentScreen> {
     margin: const EdgeInsets.only(bottom: 15),
     decoration: BoxDecoration(
       color: Colors.white,
-      borderRadius: BorderRadius.circular(15),
-      border: Border.all(color: Colors.blue.shade400),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: Colors.grey.shade300),
     ),
     child: TextField(
       controller: c,
       readOnly: onTap != null,
       onTap: onTap,
       decoration: InputDecoration(
-        hintText: h,
+        labelText: h,
         border: InputBorder.none,
-        contentPadding: const EdgeInsets.all(15),
-        suffixIcon: icon != null ? Icon(icon) : null,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 15,
+          vertical: 10,
+        ),
+        suffixIcon: icon != null ? Icon(icon, color: _primaryBlue) : null,
       ),
     ),
   );
@@ -284,8 +321,8 @@ class _UpdateStudentScreenState extends State<UpdateStudentScreen> {
     padding: const EdgeInsets.symmetric(horizontal: 15),
     decoration: BoxDecoration(
       color: Colors.white,
-      borderRadius: BorderRadius.circular(15),
-      border: Border.all(color: Colors.blue.shade400),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: Colors.grey.shade300),
     ),
     child: DropdownButtonHideUnderline(
       child: DropdownButton<String>(
@@ -306,8 +343,8 @@ class _UpdateStudentScreenState extends State<UpdateStudentScreen> {
     padding: const EdgeInsets.symmetric(horizontal: 15),
     decoration: BoxDecoration(
       color: Colors.white,
-      borderRadius: BorderRadius.circular(15),
-      border: Border.all(color: Colors.blue.shade400),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: Colors.grey.shade300),
     ),
     child: DropdownButtonHideUnderline(
       child: DropdownButton<String>(
@@ -324,11 +361,26 @@ class _UpdateStudentScreenState extends State<UpdateStudentScreen> {
 
   Widget _buildImagePicker() => GestureDetector(
     onTap: _pickImage,
-    child: CircleAvatar(
-      radius: 55,
-      backgroundColor: Colors.grey[200],
-      backgroundImage: _imageFile != null ? FileImage(_imageFile!) : null,
-      child: _imageFile == null ? const Icon(Icons.camera_alt, size: 30) : null,
+    child: Stack(
+      children: [
+        CircleAvatar(
+          radius: 55,
+          backgroundColor: Colors.grey[200],
+          backgroundImage: _imageFile != null ? FileImage(_imageFile!) : null,
+          child: _imageFile == null
+              ? Icon(Icons.person, size: 50, color: Colors.grey[400])
+              : null,
+        ),
+        Positioned(
+          bottom: 0,
+          right: 0,
+          child: CircleAvatar(
+            backgroundColor: _primaryBlue,
+            radius: 18,
+            child: const Icon(Icons.camera_alt, size: 18, color: Colors.white),
+          ),
+        ),
+      ],
     ),
   );
 
@@ -338,32 +390,18 @@ class _UpdateStudentScreenState extends State<UpdateStudentScreen> {
     child: ElevatedButton(
       style: ElevatedButton.styleFrom(
         backgroundColor: _primaryBlue,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        elevation: 0,
       ),
       onPressed: _handleUpdate,
       child: const Text(
-        "SAVE UPDATE",
-        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        "SAVE CHANGES",
+        style: TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+          fontSize: 16,
+        ),
       ),
     ),
   );
-
-  Future<void> _pickDate() async {
-    DateTime? p = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(1900),
-      lastDate: DateTime.now(),
-    );
-    if (p != null)
-      setState(() => _dobCtrl.text = DateFormat('yyyy-MM-dd').format(p));
-  }
-
-  Future<void> _pickImage() async {
-    final XFile? image = await ImagePicker().pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 50,
-    );
-    if (image != null) setState(() => _imageFile = File(image.path));
-  }
 }

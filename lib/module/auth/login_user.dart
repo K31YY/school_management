@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:convert';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
-
 // Ensure these paths match your project structure exactly
 import 'package:ungthoung_app/providers/auth_provider.dart';
 import 'package:ungthoung_app/services/api_service.dart';
@@ -65,7 +64,6 @@ class _LoginUserState extends ConsumerState<LoginUser> {
                 userId: uId,
               );
           EasyLoading.showSuccess('Welcome, $fullName!');
-
         } else {
           EasyLoading.showError(data['message'] ?? 'Login failed!');
         }
@@ -156,6 +154,10 @@ class _LoginUserState extends ConsumerState<LoginUser> {
       controller: controller,
       obscureText: isPassword ? _isObscured : false,
       decoration: InputDecoration(
+        focusedBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: _primaryColor, width: 2),
+          borderRadius: BorderRadius.circular(15),
+        ),
         labelText: label,
         prefixIcon: Icon(icon),
         suffixIcon: isPassword
