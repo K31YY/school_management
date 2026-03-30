@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-
 // Navigation Imports
 import 'package:ungthoung_app/menu/assign_schedule.dart';
 import 'package:ungthoung_app/menu/navigation_menu.dart';
 import 'package:ungthoung_app/menu/report_area.dart';
+import 'package:ungthoung_app/menu/subject_screen.dart';
 import 'package:ungthoung_app/menu/views_student.dart';
 import 'package:ungthoung_app/menu/views_teacher.dart';
-import 'package:ungthoung_app/notification_screen.dart';
-import 'package:ungthoung_app/students/stu_class.dart';
+import 'package:ungthoung_app/admin/notification_screen.dart';
+import 'package:ungthoung_app/teachers/teacher.class.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -282,14 +282,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 Icons.book,
                 const Color(0xFFFEF4DB),
                 const Color(0xFFFF9500),
-                () {},
+                () => _navigateTo(const ViewsSubject()),
               ),
               _buildGridItem(
                 'Class',
                 Icons.meeting_room,
                 const Color(0xFFE6DFFB),
                 const Color(0xFF9059FF),
-                () => _navigateTo(const StuClass()),
+                () => _navigateTo(const MyTimeClassroomScreen()),
               ),
               _buildGridItem(
                 'Reporting',

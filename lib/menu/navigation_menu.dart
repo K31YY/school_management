@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:ungthoung_app/menu/year_list.dart';
 import 'package:ungthoung_app/providers/auth_provider.dart';
 import 'package:ungthoung_app/menu/add_student.dart';
 import 'package:ungthoung_app/menu/add_teacher.dart';
 import 'package:ungthoung_app/menu/assign_schedule.dart';
 import 'package:ungthoung_app/menu/change_password.dart';
-import 'package:ungthoung_app/menu/report_area.dart';
 import 'package:ungthoung_app/menu/views_student.dart';
 import 'package:ungthoung_app/menu/views_teacher.dart';
 
@@ -56,10 +56,7 @@ class NavigationMenu extends ConsumerWidget {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Colors.white,
-              Colors.grey.shade50,
-            ],
+            colors: [Colors.white, Colors.grey.shade50],
           ),
         ),
         child: ListView(
@@ -83,7 +80,7 @@ class NavigationMenu extends ConsumerWidget {
             _buildMenuItem(
               context,
               Icons.calendar_today_outlined,
-              () => _navigateTo(context, const AssignSchedule()),
+              () => _navigateTo(context, AssignSchedule()),
               title: 'Assign Schedule',
             ),
             const SizedBox(height: 8),
@@ -100,11 +97,11 @@ class NavigationMenu extends ConsumerWidget {
               () => _navigateTo(context, const AddStudent()),
               title: 'Add Student',
             ),
-             _buildMenuItem(
+            _buildMenuItem(
               context,
               Icons.bar_chart_outlined,
-              () => _navigateTo(context, const ReportingScreen()),
-              title: 'Report Area',
+              () => _navigateTo(context, const AcademicYearScreen()),
+              title: 'Year List',
             ),
             const SizedBox(height: 8),
             _buildSectionHeader('Setting'),
@@ -137,19 +134,14 @@ class NavigationMenu extends ConsumerWidget {
           Text(
             title,
             style: TextStyle(
-              fontWeight: FontWeight.bold, 
+              fontWeight: FontWeight.bold,
               fontSize: 13,
               color: Colors.grey.shade600,
               letterSpacing: 1.2,
             ),
           ),
           const SizedBox(width: 12),
-          Expanded(
-            child: Divider(
-              color: Colors.grey.shade300, 
-              thickness: 1,
-            ),
-          ),
+          Expanded(child: Divider(color: Colors.grey.shade300, thickness: 1)),
         ],
       ),
     );
@@ -162,10 +154,7 @@ class NavigationMenu extends ConsumerWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF4A5BF6),
-            Color(0xFF6B7BFF),
-          ],
+          colors: [Color(0xFF4A5BF6), Color(0xFF6B7BFF)],
         ),
       ),
       child: Column(
@@ -195,7 +184,7 @@ class NavigationMenu extends ConsumerWidget {
           Text(
             auth.role ?? 'BUDDHIST HIGH SCHOOL',
             style: TextStyle(
-              fontSize: 12, 
+              fontSize: 12,
               color: Colors.white.withOpacity(0.85),
               letterSpacing: 0.5,
             ),
@@ -227,15 +216,15 @@ class NavigationMenu extends ConsumerWidget {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: color == Colors.red.shade700 
+                    color: color == Colors.red.shade700
                         ? Colors.red.shade50
                         : Colors.blue.shade50,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
-                    icon, 
-                    color: color == Colors.red.shade700 
-                        ? Colors.red.shade700 
+                    icon,
+                    color: color == Colors.red.shade700
+                        ? Colors.red.shade700
                         : const Color(0xFF4A5BF6),
                     size: 20,
                   ),
@@ -245,7 +234,7 @@ class NavigationMenu extends ConsumerWidget {
                   child: Text(
                     title ?? '',
                     style: TextStyle(
-                      color: color, 
+                      color: color,
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
                     ),

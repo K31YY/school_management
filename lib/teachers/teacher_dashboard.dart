@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-// Your original imports - Ensure these paths are correct in your project
-import 'package:ungthoung_app/login_user.dart';
-import 'package:ungthoung_app/menu/views_student.dart';
-import 'package:ungthoung_app/teachers/attandance.dart';
-import 'package:ungthoung_app/teachers/teacher.class.dart';
-import 'package:ungthoung_app/teachers/add_score.dart';
-import 'package:ungthoung_app/teachers/report.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:ungthoung_app/module/auth/login_user.dart';
 import 'package:ungthoung_app/menu/change_password.dart';
+import 'package:ungthoung_app/menu/views_student.dart';
+import 'package:ungthoung_app/teachers/add_score.dart';
+import 'package:ungthoung_app/teachers/attandance.dart';
+import 'package:ungthoung_app/teachers/report.dart';
 import 'package:ungthoung_app/teachers/teach_notify.dart';
+import 'package:ungthoung_app/teachers/teacher.class.dart';
 
 class TeacherDashboard extends StatefulWidget {
   const TeacherDashboard({super.key});
@@ -21,11 +21,15 @@ class TeacherDashboard extends StatefulWidget {
 
 class _TeacherDashboardState extends State<TeacherDashboard> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  final String baseUrl = "http://10.0.2.2:8000/api";
 
   String _userName = "Loading...";
   String _userRole = "Loading...";
+  String _teacherCount = "0";
+  List<dynamic> _recentTeachers = [];
+  bool _isLoading = true;
 
-  // Professional constants for your original color palette
+  // Palette
   static const Color primaryBlue = Color(0xFF4A5BF6);
   static const Color backgroundGrey = Color(0xFFF0F0F0);
   static const Color salmonRed = Color(0xFFFF6B6B);
@@ -34,22 +38,57 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
   @override
   void initState() {
     super.initState();
-    _loadUserData();
+    _loadInitialData();
   }
 
-  // Rigorous data loading with safety checks
+  Future<void> _loadInitialData() async {
+    await _loadUserData();
+    await _fetchDashboardStats();
+  }
+
   Future<void> _loadUserData() async {
     final sp = await SharedPreferences.getInstance();
     if (!mounted) return;
     setState(() {
-      _userName = sp.getString('FULLNAME') ?? "No Name";
-      _userRole = sp.getString('ROLE') ?? "No Role";
+      _userName = sp.getString('FULLNAME') ?? "User";
+      _userRole = sp.getString('ROLE') ?? "Teacher";
     });
   }
 
-  // Professional Navigation Helper
+  Future<void> _fetchDashboardStats() async {
+    final sp = await SharedPreferences.getInstance();
+    final token = sp.getString('TOKEN');
+
+    try {
+      final response = await http.get(
+        Uri.parse("$baseUrl/teachers"),
+        headers: {
+          "Authorization": "Bearer $token",
+          "Accept": "application/json",
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        final List<dynamic> data = responseData['data'] ?? [];
+
+        setState(() {
+          _teacherCount = data.length.toString();
+          _recentTeachers = data.reversed.take(5).toList();
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint("Dashboard Error: $e");
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   void _navigateTo(Widget screen) {
-    Navigator.push(context, MaterialPageRoute(builder: (context) => screen));
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => screen),
+    ).then((_) => _fetchDashboardStats()); // Refresh stats on return
   }
 
   Future<void> _handleLogout() async {
@@ -64,7 +103,7 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text("No", style: TextStyle(color: Colors.grey)),
+            child: const Text("No"),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
@@ -92,70 +131,65 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
       key: _scaffoldKey,
       backgroundColor: backgroundGrey,
       drawer: _buildDrawer(),
-      body: Stack(
-        children: [
-          // Header Blue Background
-          Container(
-            height: 240,
-            width: double.infinity,
-            decoration: const BoxDecoration(
-              color: primaryBlue,
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(30),
-                bottomRight: Radius.circular(30),
+      body: RefreshIndicator(
+        onRefresh: _fetchDashboardStats,
+        child: Stack(
+          children: [
+            Container(
+              height: 240,
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                color: primaryBlue,
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(30),
+                  bottomRight: Radius.circular(30),
+                ),
               ),
             ),
-          ),
-          SafeArea(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 10),
-                  _buildTopBar(),
-                  const SizedBox(height: 24),
-                  _buildProfileCard(),
-                  const SizedBox(height: 20),
-                  _buildStatsRow(),
-                  const SizedBox(height: 24),
-                  _buildSectionHeader(
-                    "Latest Admission",
-                    Icons.groups_outlined,
-                  ),
-                  const SizedBox(height: 16),
-                  _buildHorizontalAdmissionList(),
-                  const SizedBox(height: 24),
-                  _buildSectionHeader(
-                    "Absent Students",
-                    Icons.arrow_forward_ios,
-                    isIconSmall: true,
-                  ),
-                  Text(
-                    "List of students with low attendance",
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      color: Colors.grey[600],
+            SafeArea(
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 10),
+                    _buildTopBar(),
+                    const SizedBox(height: 24),
+                    _buildProfileCard(),
+                    const SizedBox(height: 20),
+                    _buildStatsRow(), // Removed 'const' here
+                    const SizedBox(height: 24),
+                    _buildSectionHeader(
+                      "Latest Admission",
+                      Icons.groups_outlined,
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  // Student List Items
-                  const _StudentListItem(name: "Neat Tina", grade: "Grade 10"),
-                  const _StudentListItem(name: "Reun Rin", grade: "Grade 10"),
-                  const _StudentListItem(name: "Rom Sarun", grade: "Grade 10"),
-                  const _StudentListItem(name: "Yum Danet", grade: "Grade 10"),
-                  const SizedBox(height: 30),
-                ],
+                    const SizedBox(height: 16),
+                    _buildHorizontalAdmissionList(),
+                    const SizedBox(height: 24),
+                    _buildSectionHeader(
+                      "Absent Students",
+                      Icons.arrow_forward_ios,
+                      isIconSmall: true,
+                    ),
+                    const SizedBox(height: 16),
+                    const _StudentListItem(
+                      name: "Neat Tina",
+                      grade: "Grade 10",
+                    ),
+                    const _StudentListItem(name: "Reun Rin", grade: "Grade 10"),
+                    const SizedBox(height: 30),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  // --- REUSABLE COMPONENTS (Logic Cleaned, UI Preserved) ---
+  // --- UI COMPONENTS ---
 
   Widget _buildTopBar() {
     return Row(
@@ -237,23 +271,41 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
     );
   }
 
+  // FIXED: No longer const because _teacherCount is dynamic
   Widget _buildStatsRow() {
-    return const Row(
+    return Row(
       children: [
         _StatCard(
           color: salmonRed,
           title: "Teachers",
-          value: "10",
+          value: _teacherCount,
           icon: Icons.groups,
         ),
-        SizedBox(width: 16),
-        _StatCard(
+        const SizedBox(width: 16),
+        const _StatCard(
           color: brightGreen,
-          title: "Class Attendance",
+          title: "Attendance",
           value: "0.0%",
           icon: Icons.bar_chart,
         ),
       ],
+    );
+  }
+
+  Widget _buildHorizontalAdmissionList() {
+    if (_isLoading) return const Center(child: CircularProgressIndicator());
+    if (_recentTeachers.isEmpty) return const Text("No recent teachers found");
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
+      child: Row(
+        children: _recentTeachers.map((t) {
+          return _AvatarItem(
+            name: t['TeacherName'].toString().replaceFirst(' ', '\n'),
+          );
+        }).toList(),
+      ),
     );
   }
 
@@ -278,21 +330,6 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
     );
   }
 
-  Widget _buildHorizontalAdmissionList() {
-    return const SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      physics: BouncingScrollPhysics(),
-      child: Row(
-        children: [
-          _AvatarItem(name: "I am a\nTeacher"),
-          _AvatarItem(name: "Khoeurt\nSokhy"),
-          _AvatarItem(name: "Roern\nRin"),
-          _AvatarItem(name: "Roern\nRin"),
-        ],
-      ),
-    );
-  }
-
   Widget _buildDrawer() {
     return Drawer(
       child: ListView(
@@ -312,7 +349,7 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
           ),
           _drawerTile(
             Icons.groups,
-            "Students",
+            "Manage Students",
             () => _navigateTo(const ViewsStudent()),
           ),
           _drawerTile(
@@ -320,10 +357,13 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
             "Attendance",
             () => _navigateTo(const MakeAttendanceScreen()),
           ),
+          // Locate this in your _buildDrawer() method:
           _drawerTile(
             Icons.class_,
             "My Classes",
-            () => _navigateTo(const MyTimeClassroomScreen()),
+            () => _navigateTo(
+              const MyTimeClassroomScreen(isReadOnly: true),
+            ), // Pass the flag
           ),
           const Divider(),
           _drawerTile(
@@ -332,18 +372,15 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
             () => _navigateTo(const AddScoreScreen()),
           ),
           _drawerTile(
-            Icons.repartition,
+            Icons.report,
             "Report",
             () => _navigateTo(const AdvancedReportingScreen()),
           ),
-
           _drawerTile(
             Icons.change_circle,
             "Change Password",
             () => _navigateTo(const ChangePasswordScreen()),
           ),
-
-          const Divider(),
           _drawerTile(Icons.logout, "Logout", _handleLogout, color: Colors.red),
         ],
       ),
@@ -370,12 +407,13 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
   }
 }
 
-// --- EXTRACTED PRIVATE WIDGET CLASSES (Rigorous Professional Approach) ---
+// --- HELPER CLASSES ---
 
 class _StatCard extends StatelessWidget {
   final Color color;
   final String title, value;
   final IconData icon;
+
   const _StatCard({
     required this.color,
     required this.title,
@@ -402,21 +440,23 @@ class _StatCard extends StatelessWidget {
               style: GoogleFonts.poppins(
                 color: Colors.white,
                 fontWeight: FontWeight.w600,
-                fontSize: 14,
+                fontSize: 13,
               ),
             ),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  value,
-                  style: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 20,
+                Flexible(
+                  child: Text(
+                    value,
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
                   ),
                 ),
-                Icon(icon, color: Colors.white, size: 40),
+                Icon(icon, color: Colors.white, size: 30),
               ],
             ),
           ],

@@ -1,5 +1,10 @@
+// ignore_for_file: avoid_print, unnecessary_to_list_in_spreads, use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class MyProfileScreen extends StatefulWidget {
   const MyProfileScreen({super.key});
@@ -9,14 +14,66 @@ class MyProfileScreen extends StatefulWidget {
 }
 
 class _MyProfileScreenState extends State<MyProfileScreen> {
-  // Colors
   final Color primaryBlue = const Color(0xFF4A5BF6);
   final Color backgroundGrey = const Color(0xFFF0F0F0);
   final Color textDark = const Color(0xFF333333);
   final Color headerCyan = const Color(0xFF00C2FF);
 
-  // State: Default to Profile
   bool isProfileTab = true;
+  bool isLoading = true;
+  Map<String, dynamic>? studentData;
+  List<dynamic> studiesData = [];
+
+  @override
+  void initState() {
+    super.initState();
+    fetchData();
+  }
+
+  Future<void> fetchData() async {
+    final sp = await SharedPreferences.getInstance();
+    final token = sp.getString('TOKEN');
+
+    // 1. Double-check this URL. Can you open it in your computer's browser?
+    const String baseUrl = "http://10.0.2.2:8000/api";
+
+    try {
+      final headers = {
+        'Authorization': 'Bearer $token',
+        'Accept': 'application/json',
+      };
+
+      print("Attempting to fetch data..."); // Debug Log
+
+      final responses = await Future.wait([
+        http
+            .get(Uri.parse('$baseUrl/my-profile'), headers: headers)
+            .timeout(const Duration(seconds: 10)),
+        http
+            .get(Uri.parse('$baseUrl/my-results'), headers: headers)
+            .timeout(const Duration(seconds: 10)),
+      ]);
+
+      if (responses[0].statusCode == 200 && responses[1].statusCode == 200) {
+        setState(() {
+          studentData = json.decode(responses[0].body)['data'];
+          studiesData = json.decode(responses[1].body)['data'];
+          isLoading = false; // Stops the loading spinner
+        });
+        print("Data loaded successfully!");
+      } else {
+        print(
+          "Server Error: Profile(${responses[0].statusCode}) Results(${responses[1].statusCode})",
+        );
+        setState(() => isLoading = false);
+      }
+    } catch (e) {
+      print("CONNECTION ERROR: $e");
+      // If it prints "Connection refused", your Laravel server isn't running.
+      // If it prints "Timeout", the IP address is wrong.
+      setState(() => isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,12 +82,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
       appBar: AppBar(
         backgroundColor: primaryBlue,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            Navigator.pop(context);
-          },
-        ),
+        iconTheme: const IconThemeData(color: Colors.white),
         title: Text(
           isProfileTab ? "My Profile" : "My Result",
           style: GoogleFonts.poppins(
@@ -40,203 +92,155 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
         ),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // --- 1. Header Section (Name & Avatar) ---
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Column(
+      body: isLoading
+          ? Center(child: CircularProgressIndicator(color: primaryBlue))
+          : RefreshIndicator(
+              onRefresh: fetchData,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(20),
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      "KHOEURT SOKHY",
-                      style: GoogleFonts.poppins(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      "ID : CCD001",
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey[500],
-                      ),
-                    ),
+                    _buildHeaderSection(),
+                    const SizedBox(height: 10),
+                    Divider(color: Colors.grey[400], thickness: 1),
+                    const SizedBox(height: 20),
+                    _buildTabSwitcher(),
+                    const SizedBox(height: 20),
+                    isProfileTab
+                        ? _buildProfileContent()
+                        : _buildResultContent(),
                   ],
                 ),
-                const CircleAvatar(
-                  radius: 35,
-                  backgroundColor: Colors.black12,
-                  child: CircleAvatar(
-                    radius: 32,
-                    backgroundColor: Colors.white,
-                    child: Icon(Icons.person, size: 50, color: Colors.black),
-                  ),
+              ),
+            ),
+    );
+  }
+
+  Widget _buildHeaderSection() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                // Showing Khmer name if available, otherwise English
+                studentData?['StuNameKH'] ??
+                    studentData?['StuNameEN'] ??
+                    "Unknown",
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
                 ),
-              ],
-            ),
-
-            const SizedBox(height: 10),
-            Divider(color: Colors.grey[400], thickness: 1),
-            const SizedBox(height: 20),
-
-            // --- 2. Custom Tab Switcher (UPDATED) ---
-            Container(
-              height: 30,
-              decoration: BoxDecoration(
-                color: Colors.white, // Background of the container
-                borderRadius: BorderRadius.circular(15),
-                border: Border.all(
-                  color: primaryBlue,
-                ), // Blue border around the whole toggle
               ),
-              child: Row(
-                children: [
-                  // Profile Tab
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => isProfileTab = true),
-                      child: Container(
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          // Active = Blue, Inactive = Transparent
-                          color: isProfileTab
-                              ? primaryBlue
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        child: Text(
-                          "Profile",
-                          style: GoogleFonts.poppins(
-                            fontWeight: FontWeight.bold,
-                            // Active Text = White, Inactive = Black
-                            color: isProfileTab ? Colors.white : Colors.black,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  // Result Tab
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => isProfileTab = false),
-                      child: Container(
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          // Active = Blue, Inactive = Transparent
-                          color: !isProfileTab
-                              ? primaryBlue
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        child: Text(
-                          "Result",
-                          style: GoogleFonts.poppins(
-                            fontWeight: FontWeight.bold,
-                            // Active Text = White, Inactive = Black
-                            color: !isProfileTab ? Colors.white : Colors.black,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+              Text(
+                "ID : ${studentData?['StuID'] ?? 'N/A'}",
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w600,
+                ),
               ),
+            ],
+          ),
+        ),
+        const CircleAvatar(
+          radius: 30,
+          backgroundColor: Colors.black12,
+          child: Icon(Icons.person, size: 40, color: Colors.black54),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTabSwitcher() {
+    return Container(
+      height: 40,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: primaryBlue),
+      ),
+      child: Row(
+        children: [_tabButton("Profile", true), _tabButton("Result", false)],
+      ),
+    );
+  }
+
+  Widget _tabButton(String title, bool isProfile) {
+    bool isActive = (isProfileTab == isProfile);
+    return Expanded(
+      child: InkWell(
+        onTap: () => setState(() => isProfileTab = isProfile),
+        child: Container(
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: isActive ? primaryBlue : Colors.transparent,
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: Text(
+            title,
+            style: GoogleFonts.poppins(
+              fontWeight: FontWeight.bold,
+              color: isActive ? Colors.white : primaryBlue,
             ),
-
-            const SizedBox(height: 20),
-
-            // --- 3. Dynamic Content ---
-            // Shows Profile details if isProfileTab is true
-            // Shows Result tables if isProfileTab is false
-            if (isProfileTab) _buildProfileContent() else _buildResultContent(),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  // --- Profile Tab Content ---
   Widget _buildProfileContent() {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildInfoItem("Date of Birth", "21-07-2003"),
-        _buildInfoItem("Gender", "Male"),
-
-        Row(
-          children: [
-            Expanded(child: _buildInfoItem("Father's name", "LEE")),
-            Expanded(child: _buildInfoItem("Job", "Software Engineer")),
-          ],
-        ),
-
-        Row(
-          children: [
-            Expanded(child: _buildInfoItem("Mother's name", "MEE")),
-            Expanded(child: _buildInfoItem("Job", "Doctor")),
-          ],
-        ),
-
-        _buildInfoItem("Family Contact", "099999999"),
-        _buildInfoItem("Phone number", "012891012"),
         _buildInfoItem(
-          "Address",
-          "Svay Dangkum, Svay Dangkum, Siem Reap, Siem Reap",
+          "Date of Birth",
+          studentData?['DOB']?.toString().split('T')[0] ?? "N/A",
         ),
-        _buildInfoItem("Class / Section", "11 / A"),
-        _buildInfoItem("Group", "A1"),
-        _buildInfoItem("Study Year", "2024-2025"),
-      ],
-    );
-  }
-
-  // --- Result Tab Content ---
-  Widget _buildResultContent() {
-    return Column(
-      children: [
-        _buildTermTable("Term 1"),
-        const SizedBox(height: 20),
-        _buildTermTable("Term 2"),
-      ],
-    );
-  }
-
-  // --- Helper Widgets ---
-
-  Widget _buildInfoItem(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 20.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: GoogleFonts.poppins(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: textDark,
+        _buildInfoItem("Gender", studentData?['Gender'] ?? "N/A"),
+        Row(
+          children: [
+            Expanded(
+              child: _buildInfoItem(
+                "Father's Name",
+                studentData?['FatherName'] ?? "N/A",
+              ),
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[600]),
-          ),
-        ],
-      ),
+            Expanded(
+              child: _buildInfoItem("Job", studentData?['FatherJob'] ?? "N/A"),
+            ),
+          ],
+        ),
+        Row(
+          children: [
+            Expanded(
+              child: _buildInfoItem(
+                "Mother's Name",
+                studentData?['MotherName'] ?? "N/A",
+              ),
+            ),
+            Expanded(
+              child: _buildInfoItem("Job", studentData?['MotherJob'] ?? "N/A"),
+            ),
+          ],
+        ),
+        _buildInfoItem(
+          "Contact",
+          studentData?['FamilyContact'] ?? studentData?['Phone'] ?? "N/A",
+        ),
+        _buildInfoItem("Address", studentData?['Address'] ?? "N/A"),
+      ],
     );
   }
 
-  Widget _buildTermTable(String termTitle) {
+  Widget _buildResultContent() {
+    if (studiesData.isEmpty) {
+      return const Center(child: Text("No academic results found."));
+    }
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -247,113 +251,71 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            termTitle,
+            "Current Academic Results",
             style: GoogleFonts.poppins(
-              fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: Colors.black,
+              fontSize: 16,
             ),
           ),
           const SizedBox(height: 12),
-
-          // Table Header
           Container(
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
             decoration: BoxDecoration(
               color: headerCyan,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
               children: [
-                _buildCell("Subject Name", flex: 3, isHeader: true),
-                _buildCell("Quiz1", isHeader: true),
-                _buildCell("Quiz2", isHeader: true),
+                _buildCell("Subject", flex: 3, isHeader: true),
+                _buildCell("Quiz", isHeader: true),
+                _buildCell("HW", isHeader: true),
                 _buildCell("Mid", isHeader: true),
                 _buildCell("Final", isHeader: true),
                 _buildCell("Total", isHeader: true),
-                _buildCell("Grade", isHeader: true),
               ],
             ),
           ),
           const SizedBox(height: 8),
-
-          // Table Rows (Mock Data)
-          _buildResultRow(
-            "English Grade 10",
-            "4.0",
-            "4.0",
-            "5.0",
-            "5.0",
-            "5.0",
-            "A",
-          ),
-          _buildResultRow(
-            "English Grade 10",
-            "4.0",
-            "4.0",
-            "5.0",
-            "5.0",
-            "5.0",
-            "A",
-          ),
-          _buildResultRow(
-            "English Grade 10",
-            "4.0",
-            "4.0",
-            "5.0",
-            "5.0",
-            "5.0",
-            "A",
-          ),
-          _buildResultRow(
-            "English Grade 10",
-            "4.0",
-            "4.0",
-            "5.0",
-            "5.0",
-            "5.0",
-            "A",
-          ),
-          _buildResultRow(
-            "English Grade 10",
-            "4.0",
-            "4.0",
-            "5.0",
-            "5.0",
-            "5.0",
-            "A",
-          ),
+          ...studiesData.map((item) {
+            // FIX: Map accurately to your API response
+            return _buildResultRow(
+              item['subject']?['SubjectName'] ?? "N/A",
+              item['Quiz']?.toString() ?? "0",
+              item['Homework']?.toString() ?? "0",
+              item['Midterm']?.toString() ?? "0",
+              item['Final']?.toString() ?? "0",
+              item['TotalScore']?.toString() ?? "0",
+            );
+          }).toList(),
         ],
       ),
     );
   }
 
   Widget _buildResultRow(
-    String subject,
+    String sub,
     String q1,
-    String q2,
+    String hw,
     String mid,
     String fin,
     String total,
-    String grade,
   ) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: primaryBlue),
+        border: Border.all(color: Colors.black12),
       ),
       child: Row(
         children: [
-          _buildCell(subject, flex: 3, isHeader: false, isBold: true),
-          _buildCell(q1, isHeader: false),
-          _buildCell(q2, isHeader: false),
-          _buildCell(mid, isHeader: false),
-          _buildCell(fin, isHeader: false),
-          _buildCell(total, isHeader: false),
-          _buildCell(grade, isHeader: false),
+          _buildCell(sub, flex: 3, isBold: true),
+          _buildCell(q1),
+          _buildCell(hw),
+          _buildCell(mid),
+          _buildCell(fin),
+          _buildCell(total, isBold: true),
         ],
       ),
     );
@@ -371,13 +333,35 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
         text,
         textAlign: TextAlign.center,
         style: GoogleFonts.poppins(
-          fontSize: isHeader ? 10 : 10,
+          fontSize: 10,
           fontWeight: (isHeader || isBold)
               ? FontWeight.bold
               : FontWeight.normal,
-          color: isHeader ? Colors.black : Colors.grey[800],
         ),
-        overflow: TextOverflow.ellipsis,
+      ),
+    );
+  }
+
+  Widget _buildInfoItem(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 15),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: GoogleFonts.poppins(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: primaryBlue,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: GoogleFonts.poppins(fontSize: 14, color: textDark),
+          ),
+        ],
       ),
     );
   }

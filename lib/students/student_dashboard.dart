@@ -1,11 +1,13 @@
 // ignore_for_file: deprecated_member_use, use_build_context_synchronously
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:ungthoung_app/login_user.dart'; // កុំភ្លេចឆែកឈ្មោះ File នេះ
+
+// Ensure these imports match your project file names exactly
+import 'package:ungthoung_app/module/auth/login_user.dart';
 import 'package:ungthoung_app/menu/change_password.dart';
 import 'package:ungthoung_app/students/my_result.dart';
+import 'package:ungthoung_app/students/schedule.dart';
 import 'package:ungthoung_app/students/stu_absent.dart';
 import 'package:ungthoung_app/students/stu_attandance.dart';
 import 'package:ungthoung_app/students/stu_class.dart';
@@ -26,14 +28,17 @@ class _StudentDashboardState extends State<StudentDashboard> {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'SchoolApp',
-      theme: ThemeData(primarySwatch: Colors.blue, fontFamily: 'KantumruyPro'),
-      home: const HomeScreen(), // ប្តូរទៅជា const HomeScreen
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+        fontFamily:
+            'KantumruyPro', // Make sure this font is in your pubspec.yaml
+      ),
+      home: const HomeScreen(),
       debugShowCheckedModeBanner: false,
     );
   }
 }
 
-// ប្តូរ HomeScreen ទៅជា StatefulWidget ដើម្បីទាញទិន្នន័យឈ្មោះបាន
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -43,8 +48,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-
-  // --- ផ្នែកទាញទិន្នន័យឈ្មោះ (ដូច TeacherDashboard) ---
   String userName = "Loading...";
 
   @override
@@ -56,9 +59,62 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadUserData() async {
     final sp = await SharedPreferences.getInstance();
     setState(() {
-      // ប្រសិនបើក្នុង Login អ្នករក្សាទុក Key ផ្សេង (ឧទាហរណ៍ 'name') សូមប្តូរ 'FULLNAME' នេះចេញ
       userName = sp.getString('FULLNAME') ?? "No Name";
     });
+  }
+
+  // --- THE FIXED LOGOUT DIALOG ---
+  void _showLogoutDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Text(
+            "Confirm Logout",
+            style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+          ),
+          content: Text(
+            "Are you sure you want to logout?",
+            style: GoogleFonts.poppins(),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context), // Closes the dialog
+              child: Text(
+                "Cancel",
+                style: GoogleFonts.poppins(color: Colors.grey),
+              ),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              onPressed: () async {
+                final sp = await SharedPreferences.getInstance();
+                await sp.clear(); // Clear user session
+
+                // Navigate to Login and prevent going back
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LoginUser()),
+                  (route) => false,
+                );
+              },
+              child: Text(
+                "Logout",
+                style: GoogleFonts.poppins(color: Colors.white),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   String getGreeting() {
@@ -67,112 +123,82 @@ class _HomeScreenState extends State<HomeScreen> {
     if (hour >= 17 && hour <= 24) return 'Good Evening!';
     return 'Good Morning!';
   }
-  // ------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: const Color(0xFFF4F6F8),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            UserAccountsDrawerHeader(
-              decoration: const BoxDecoration(color: Color(0xFF4A5BF6)),
-              accountName: Text(
-                userName, // បង្ហាញឈ្មោះពិតនៅទីនេះ
-                style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
-              ),
-              accountEmail: Text(
-                "Student Account",
-                style: GoogleFonts.poppins(),
-              ),
-              currentAccountPicture: const CircleAvatar(
-                backgroundColor: Colors.white,
-                child: Icon(Icons.person, color: Colors.black),
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.groups),
-              title: Text("My Result", style: GoogleFonts.poppins()),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const MyProfileScreen(),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.assignment),
-              title: Text("My Times", style: GoogleFonts.poppins()),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const StuClass()),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.class_),
-              title: Text("My Attendance", style: GoogleFonts.poppins()),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const MyAttendanceScreen(),
-                  ),
-                );
-              },
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.score),
-              title: Text("Request Absent", style: GoogleFonts.poppins()),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const RequestForYouScreen(),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.repartition),
-              title: Text("Change Password", style: GoogleFonts.poppins()),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const ChangePasswordScreen(),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.logout, color: Colors.red),
-              title: Text(
-                "Logout",
-                style: GoogleFonts.poppins(color: Colors.red),
-              ),
-              onTap: () async {
-                final sp = await SharedPreferences.getInstance();
-                await sp.clear();
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => const LoginUser()),
-                  (route) => false,
-                );
-              },
-            ),
-          ],
-        ),
-      ),
+      drawer: _buildDrawer(),
       body: SingleChildScrollView(
         child: Column(children: [_buildHeader(context), _buildBody(context)]),
+      ),
+    );
+  }
+
+  Widget _buildDrawer() {
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          UserAccountsDrawerHeader(
+            decoration: const BoxDecoration(color: Color(0xFF4A5BF6)),
+            accountName: Text(
+              userName,
+              style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+            ),
+            accountEmail: Text("Student Account", style: GoogleFonts.poppins()),
+            currentAccountPicture: const CircleAvatar(
+              backgroundColor: Colors.white,
+              child: Icon(Icons.person, color: Colors.black),
+            ),
+          ),
+          _drawerItem(
+            Icons.assessment_outlined,
+            "View My Results",
+            const MyProfileScreen(),
+          ),
+          _drawerItem(
+            Icons.calendar_view_day_outlined,
+            "View My Schedule",
+            const ViewSchedule(),
+          ),
+          _drawerItem(
+            Icons.fact_check_outlined,
+            "View My Attendance",
+            const MyAttendanceScreen(),
+          ),
+          const Divider(),
+          _drawerItem(
+            Icons.history_edu,
+            "My Absent Requests",
+            const RequestForYouScreen(),
+          ),
+          _drawerItem(
+            Icons.lock_outline,
+            "Change Password",
+            const ChangePasswordScreen(),
+          ),
+          ListTile(
+            leading: const Icon(Icons.logout, color: Colors.red),
+            title: Text(
+              "Logout",
+              style: GoogleFonts.poppins(color: Colors.red),
+            ),
+            onTap: _showLogoutDialog, // Triggers the dialog
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _drawerItem(IconData icon, String title, Widget target) {
+    return ListTile(
+      leading: Icon(icon),
+      title: Text(title, style: GoogleFonts.poppins()),
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => target),
       ),
     );
   }
@@ -197,37 +223,30 @@ class _HomeScreenState extends State<HomeScreen> {
             child: SafeArea(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Column(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const SizedBox(height: 10),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        IconButton(
-                          icon: const Icon(
-                            Icons.menu,
-                            color: Colors.white,
-                            size: 30,
-                          ),
-                          onPressed: () {
-                            _scaffoldKey.currentState?.openDrawer();
-                          },
-                        ),
-                        const Text(
-                          'Ung Thoung Buddhist\nHigh School',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const Icon(
-                          Icons.notifications,
-                          color: Colors.white,
-                          size: 30,
-                        ),
-                      ],
+                    IconButton(
+                      icon: const Icon(
+                        Icons.menu,
+                        color: Colors.white,
+                        size: 30,
+                      ),
+                      onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                    ),
+                    const Text(
+                      'Ung Thoung Buddhist\nHigh School',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Icon(
+                      Icons.notifications,
+                      color: Colors.white,
+                      size: 30,
                     ),
                   ],
                 ),
@@ -238,57 +257,53 @@ class _HomeScreenState extends State<HomeScreen> {
             top: 120,
             left: 20,
             right: 20,
-            child: Container(
-              padding: const EdgeInsets.all(16.0),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20.0),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    spreadRadius: 1,
-                    blurRadius: 10,
-                    offset: const Offset(0, 5),
+            child: _buildGreetingCard(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGreetingCard() {
+    return Container(
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20.0),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  getGreeting(),
+                  style: const TextStyle(color: Colors.grey, fontSize: 16),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  userName,
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
                   ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          getGreeting(),
-                          style: const TextStyle(
-                            color: Colors.grey,
-                            fontSize: 16,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          userName, // បង្ហាញឈ្មោះពិតនៅលើ Dashboard
-                          style: const TextStyle(
-                            color: Colors.black,
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const CircleAvatar(
-                    radius: 30,
-                    backgroundColor: Color(0xFFE3E6FD),
-                    child: Icon(
-                      Icons.person,
-                      size: 35,
-                      color: Color(0xFF4A5BF6),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
+          ),
+          const CircleAvatar(
+            radius: 30,
+            backgroundColor: Color(0xFFE3E6FD),
+            child: Icon(Icons.person, size: 35, color: Color(0xFF4A5BF6)),
           ),
         ],
       ),
@@ -297,28 +312,26 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildBody(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+      padding: const EdgeInsets.all(20),
       child: Column(
         children: [
           Row(
             children: [
               Expanded(
-                child: _buildInfoCard1(
-                  'Students',
-                  '10',
-                  Icons.groups,
-                  const Color(0xFFE3E6FD),
-                  const Color(0xFF4A5BF6),
+                child: _infoCard(
+                  'My Status',
+                  'Active',
+                  Icons.school,
+                  const Color(0xFF4CFF50),
                 ),
               ),
               const SizedBox(width: 20),
               Expanded(
-                child: _buildInfoCard2(
-                  'Status',
-                  'Active',
-                  Icons.bar_chart,
-                  const Color(0xFFE3E6FD),
-                  const Color(0xFF4A5BF6),
+                child: _infoCard(
+                  'Year',
+                  '2026',
+                  Icons.event_note,
+                  const Color(0xFFFF6B6B),
                 ),
               ),
             ],
@@ -331,89 +344,71 @@ class _HomeScreenState extends State<HomeScreen> {
             crossAxisSpacing: 15,
             mainAxisSpacing: 15,
             children: [
-              _buildGridItem(
-                'My Results',
-                Icons.assignment_ind_outlined,
+              _gridItem(
+                'Results',
+                Icons.analytics_outlined,
                 const Color(0xFFD4F8E6),
                 const Color(0xFF34C759),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const MyProfileScreen(),
-                    ),
-                  );
-                },
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const MyProfileScreen(),
+                  ),
+                ),
               ),
-              _buildGridItem(
-                'My Times',
-                Icons.schedule_outlined,
+              _gridItem(
+                'Schedule',
+                Icons.auto_stories_outlined,
                 const Color(0xFFE3E6FD),
                 const Color(0xFF4A5BF6),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const StuClass()),
-                  );
-                },
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const ViewSchedule()),
+                ),
               ),
-              _buildGridItem(
-                'My\nAttendance',
-                Icons.calendar_month,
+              _gridItem(
+                'Attendance',
+                Icons.rule_folder_outlined,
                 const Color(0xFFFEF4DB),
                 const Color(0xFFFF9500),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const MyAttendanceScreen(),
-                    ),
-                  );
-                },
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const MyAttendanceScreen(),
+                  ),
+                ),
               ),
-              _buildGridItem(
-                'Request\nAbsent',
+              _gridItem(
+                'Request',
                 Icons.edit_note,
                 const Color(0xFFE6DFFB),
                 const Color(0xFF9059FF),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const RequestForYouScreen(),
-                    ),
-                  );
-                },
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const RequestForYouScreen(),
+                  ),
+                ),
               ),
-              _buildGridItem(
-                'Change\nPassword',
-                Icons.lock_reset,
+              _gridItem(
+                'Change Password',
+                Icons.manage_accounts_outlined,
                 const Color(0xFFD9EEFD),
                 const Color(0xFF5AC8FA),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const ChangePasswordScreen(),
-                    ),
-                  );
-                },
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ChangePasswordScreen(),
+                  ),
+                ),
               ),
-              _buildGridItem(
+              _gridItem(
                 'Logout',
                 Icons.logout,
                 const Color(0xFFFEDDE4),
                 const Color(0xFFFF3B30),
-                onTap: () async {
-                  final sp = await SharedPreferences.getInstance();
-                  await sp.clear();
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (context) => const LoginUser()),
-                    (route) => false,
-                  );
-                },
-              ),
+                onTap: _showLogoutDialog,
+              ), // Triggers the dialog
             ],
           ),
         ],
@@ -421,109 +416,40 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildInfoCard1(
-    String title,
-    String count,
-    IconData icon,
-    Color bgColor,
-    Color iconColor,
-  ) {
+  Widget _infoCard(String title, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFFF6B6B),
+        color: color,
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                count,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: bgColor,
-              borderRadius: BorderRadius.circular(12),
+          Icon(icon, color: Colors.white, size: 24),
+          const SizedBox(height: 8),
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
             ),
-            child: Icon(icon, color: iconColor, size: 24),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildInfoCard2(
-    String title,
-    String count,
-    IconData icon,
-    Color bgColor,
-    Color iconColor,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF4CFF50),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                count,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: bgColor,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: iconColor, size: 24),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildGridItem(
+  Widget _gridItem(
     String label,
     IconData icon,
     Color bgColor,
@@ -538,30 +464,22 @@ class _HomeScreenState extends State<HomeScreen> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              spreadRadius: 1,
-              blurRadius: 10,
-            ),
+            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
           ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle),
-              child: Icon(icon, color: iconColor, size: 28),
+              child: Icon(icon, color: iconColor, size: 26),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             Text(
               label,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: Colors.black87,
-              ),
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
             ),
           ],
         ),

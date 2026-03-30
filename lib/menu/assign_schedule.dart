@@ -1,284 +1,652 @@
+// ignore_for_file: library_private_types_in_public_api, curly_braces_in_flow_control_structures
+
 import 'package:flutter/material.dart';
-import 'package:ungthoung_app/menu/add_schedule.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
 
 class AssignSchedule extends StatefulWidget {
   const AssignSchedule({super.key});
 
   @override
-  State<AssignSchedule> createState() => _AssignScheduleState();
+  _AssignScheduleScreenState createState() => _AssignScheduleScreenState();
 }
 
-class _AssignScheduleState extends State<AssignSchedule> {
-  String selectedSection = "10 - A";
-  String selectedSemester = "Semester 1";
-  String selectedDay = "Mon";
-  final List<String> days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+class _AssignScheduleScreenState extends State<AssignSchedule> {
+  // CONFIGURATION
+  final String baseUrl = "http://10.0.2.2:8000/api";
 
-  static const Color _primaryBlue = Color(0xFF0055FF);
-  static const Color _textGray = Color(0xFF888888);
+  // DATA LISTS
+  List<dynamic> classSections = [];
+  List<dynamic> studies = [];
+  List<dynamic> teachers = [];
+  List<dynamic> subjects = [];
+  List<dynamic> assignedSchedules = [];
+
+  // SELECTIONS
+  String? selectedSectionId;
+  String? selectedYearId;
+  String selectedDay = "Monday";
+
+  // STYLING
+  final Color primaryBlue = const Color(0xFF4A5BF6);
+  final Color backgroundGrey = const Color(0xFFF4F6F8);
+  final Color borderBlue = const Color(0xFFD0DBF1);
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchInitialData();
+  }
+
+  // --- API HELPERS ---
+
+  Future<Map<String, String>> _getHeaders() async {
+    final prefs = await SharedPreferences.getInstance();
+    return {
+      "Content-Type": "application/json",
+      "Accept": "application/json",
+      "Authorization": "Bearer ${prefs.getString('TOKEN')}",
+    };
+  }
+
+  Future<void> _fetchInitialData() async {
+    EasyLoading.show(status: 'Loading...');
+    try {
+      final headers = await _getHeaders();
+      final responses = await Future.wait([
+        http.get(Uri.parse("$baseUrl/class-sections"), headers: headers),
+        http.get(Uri.parse("$baseUrl/academic-years"), headers: headers),
+        http.get(Uri.parse("$baseUrl/teachers"), headers: headers),
+        http.get(Uri.parse("$baseUrl/subjects"), headers: headers),
+      ]);
+
+      if (mounted) {
+        setState(() {
+          classSections = json.decode(responses[0].body)['data'] ?? [];
+          studies = json.decode(responses[1].body)['data'] ?? [];
+          teachers = json.decode(responses[2].body)['data'] ?? [];
+          subjects = json.decode(responses[3].body)['data'] ?? [];
+        });
+      }
+    } catch (e) {
+      EasyLoading.showError("Fetch Error: $e");
+    } finally {
+      EasyLoading.dismiss();
+    }
+  }
+
+  Future<void> _fetchSchedules() async {
+    if (selectedSectionId == null) return;
+    try {
+      final headers = await _getHeaders();
+      final res = await http.get(
+        Uri.parse("$baseUrl/schedule-details?section_id=$selectedSectionId"),
+        headers: headers,
+      );
+
+      if (res.statusCode == 200) {
+        final List<dynamic> allData = json.decode(res.body)['data'];
+        setState(() {
+          assignedSchedules = allData
+              .where((item) => item['DayOfWeek'] == selectedDay)
+              .toList();
+        });
+      }
+    } catch (e) {
+      debugPrint("List Fetch Error: $e");
+    }
+  }
+
+  Future<void> _saveToDatabase(
+    String tId,
+    String sId,
+    String start,
+    String end, {
+    String? detailId,
+    String? scheduleId,
+  }) async {
+    EasyLoading.show(status: 'Processing...');
+    try {
+      final headers = await _getHeaders();
+
+      // Use 'schedule-details' with a DASH to match Laravel apiResource
+      final String url = detailId != null
+          ? "$baseUrl/schedule-details/$detailId"
+          : "$baseUrl/schedule-details";
+
+      // IDs must be sent as Integers for Laravel Validation
+      final Map<String, dynamic> body = {
+        "ScheduleID": int.parse(scheduleId ?? "1"),
+        "TeacherID": int.parse(tId),
+        "SubID": int.parse(sId),
+        "RoomID": 1,
+        "DayOfWeek": selectedDay,
+        "StartTime": start,
+        "EndTime": end,
+      };
+
+      final response = detailId != null
+          ? await http.put(
+              Uri.parse(url),
+              headers: headers,
+              body: jsonEncode(body),
+            )
+          : await http.post(
+              Uri.parse(url),
+              headers: headers,
+              body: jsonEncode(body),
+            );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        EasyLoading.showSuccess("Saved Successfully");
+        if (!mounted) return;
+        Navigator.pop(context); // Close Modal
+        _fetchSchedules(); // Refresh List
+      } else {
+        EasyLoading.dismiss();
+        debugPrint("Server Error: ${response.body}");
+        EasyLoading.showError("Failed: ${response.statusCode}");
+      }
+    } catch (e) {
+      EasyLoading.dismiss();
+      EasyLoading.showError("Network Error");
+    }
+  }
+
+  Future<void> _deleteSchedule(String id) async {
+    bool? confirm = await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        title: const Text("Delete Schedule"),
+        content: const Text("Are you sure you want to remove this schedule?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text("Delete", style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      EasyLoading.show(status: 'Deleting...');
+      try {
+        final headers = await _getHeaders();
+        final res = await http.delete(
+          Uri.parse("$baseUrl/schedule-details/$id"),
+          headers: headers,
+        );
+        if (res.statusCode == 200) {
+          EasyLoading.showSuccess("Deleted");
+          _fetchSchedules();
+        } else {
+          EasyLoading.dismiss();
+          EasyLoading.showError("Delete Failed");
+        }
+      } catch (e) {
+        EasyLoading.dismiss();
+        EasyLoading.showError("Network Error");
+      }
+    }
+  }
+
+  // --- UI COMPONENTS ---
+
+  String _formatTime(TimeOfDay time) {
+    final String hour = time.hour.toString().padLeft(2, '0');
+    final String minute = time.minute.toString().padLeft(2, '0');
+    return "$hour:$minute:00";
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFFFF),
+      backgroundColor: backgroundGrey,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF4A5BF6),
+        backgroundColor: primaryBlue,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            Navigator.pop(context);
-          },
-        ),
         title: const Text(
-          "Assign",
+          "Assign Schedule",
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.person_add, color: Colors.white),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const AssignScreen()),
-              );
+            icon: const Icon(Icons.add, color: Colors.white, size: 28),
+            onPressed: () => _openAddModal(),
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
+      body: Column(
+        children: [
+          _buildTopSelectionCard(),
+          const SizedBox(height: 15),
+          _buildDaySelector(),
+          const SizedBox(height: 10),
+          Expanded(child: _buildScheduleList()),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTopSelectionCard() {
+    return Container(
+      width: double.infinity,
+      color: Colors.white,
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _inputLabel("Class Section"),
+          _customDropdown(
+            value: selectedSectionId,
+            items: classSections
+                .map(
+                  (item) => DropdownMenuItem(
+                    value: item['SectionID'].toString(),
+                    child: Text(item['SectionName']),
+                  ),
+                )
+                .toList(),
+            onChanged: (v) {
+              setState(() => selectedSectionId = v);
+              _fetchSchedules();
             },
+          ),
+          const SizedBox(height: 15),
+          _inputLabel("Academic Year"),
+          _customDropdown(
+            value: selectedYearId,
+            items: studies
+                .map(
+                  (item) => DropdownMenuItem(
+                    value: item['YearID'].toString(),
+                    child: Text(item['YearName'] ?? "Year ${item['YearID']}"),
+                  ),
+                )
+                .toList(),
+            onChanged: (v) => setState(() => selectedYearId = v),
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          children: [
-            const SizedBox(height: 10),
-
-            // 1. Dropdown: Class Section
-            _buildLabel("Select Class Section"),
-            _buildDropdown(
-              value: selectedSection,
-              items: ["10 - A", "10 - B", "11 - A"],
-              onChanged: (val) => setState(() => selectedSection = val!),
-            ),
-
-            const SizedBox(height: 20),
-
-            // 2. Dropdown: Semester
-            // Note: Image label says "Select Class Section" again,
-            // but context suggests "Select Semester"
-            _buildLabel("Select Semester"),
-            _buildDropdown(
-              value: selectedSemester,
-              items: ["Semester 1", "Semester 2"],
-              onChanged: (val) => setState(() => selectedSemester = val!),
-            ),
-
-            const SizedBox(height: 25),
-
-            // 3. Day Selector
-            Container(
-              padding: const EdgeInsets.all(5),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: days.map((day) => _buildDayItem(day)).toList(),
-              ),
-            ),
-
-            const SizedBox(height: 25),
-
-            // 4. Class/Time Info Card
-            _buildClassInfoCard(),
-
-            const SizedBox(height: 40),
-
-            // 5. Save Button
-            SizedBox(
-              width: double.infinity,
-              height: 55,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _primaryBlue,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                ),
-                onPressed: () {
-                  // Handle Save Logic
-                },
-                child: const Text(
-                  "Save",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
-  // --- Helper Widgets ---
-
-  Widget _buildLabel(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 8),
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: Text(
-          text,
-          style: TextStyle(
-            color: _textGray,
-            fontWeight: FontWeight.bold,
-            fontSize: 14,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDropdown({
-    required String value,
-    required List<String> items,
-    required Function(String?) onChanged,
-  }) {
+  Widget _buildDaySelector() {
+    List<String> days = [
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ];
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _primaryBlue, width: 1),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: value,
-          isExpanded: true,
-          icon: const Icon(Icons.keyboard_arrow_down),
-          items: items.map((String item) {
-            return DropdownMenuItem<String>(
-              value: item,
-              child: Text(
-                item,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w500,
-                  color: Colors.black87,
-                ),
-              ),
-            );
-          }).toList(),
-          onChanged: onChanged,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDayItem(String day) {
-    bool isSelected = selectedDay == day;
-    return GestureDetector(
-      onTap: () => setState(() => selectedDay = day),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
-        decoration: BoxDecoration(
-          color: isSelected ? _primaryBlue : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Text(
-          day,
-          style: TextStyle(
-            color: isSelected ? Colors.white : Colors.black54,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildClassInfoCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(15),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "English Grade 10",
+        children: days.map((day) {
+          bool isSelected = selectedDay == day;
+          return GestureDetector(
+            onTap: () {
+              setState(() => selectedDay = day);
+              _fetchSchedules();
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: isSelected ? primaryBlue : Colors.transparent,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                day.substring(0, 3),
                 style: TextStyle(
-                  color: Colors.grey[800],
+                  color: isSelected ? Colors.white : Colors.grey,
                   fontWeight: FontWeight.bold,
-                  fontSize: 16,
                 ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                "Teacher Name",
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildScheduleList() {
+    if (assignedSchedules.isEmpty) {
+      return const Center(
+        child: Text(
+          "No schedule assigned",
+          style: TextStyle(color: Colors.grey),
+        ),
+      );
+    }
+    return ListView.builder(
+      itemCount: assignedSchedules.length,
+      itemBuilder: (context, index) {
+        final item = assignedSchedules[index];
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(15),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "${item['subject']?['SubName'] ?? 'Subject'}",
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      item['teacher']?['TeacherName'] ?? "Teacher",
+                      style: const TextStyle(color: Colors.grey, fontSize: 13),
+                    ),
+                  ],
                 ),
+              ),
+              _timeBox(
+                item['StartTime'].substring(0, 5),
+                Colors.blueGrey,
+                true,
+              ),
+              _timeBox(
+                item['EndTime'].substring(0, 5),
+                Colors.grey[300]!,
+                false,
+              ),
+              PopupMenuButton<String>(
+                onSelected: (val) {
+                  if (val == 'edit') _openAddModal(existingItem: item);
+                  if (val == 'delete')
+                    _deleteSchedule(item['DetailID'].toString());
+                },
+                itemBuilder: (ctx) => [
+                  const PopupMenuItem(value: 'edit', child: Text("Update")),
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: Text("Delete", style: TextStyle(color: Colors.red)),
+                  ),
+                ],
               ),
             ],
           ),
-          // Time Block
-          Container(
+        );
+      },
+    );
+  }
+
+  void _openAddModal({dynamic existingItem}) {
+    if (selectedSectionId == null || selectedYearId == null) {
+      EasyLoading.showInfo("Select Class and Year first");
+      return;
+    }
+
+    bool isEdit = existingItem != null;
+    String? mTeacherId = isEdit ? existingItem['TeacherID'].toString() : null;
+    String? mSubId = isEdit ? existingItem['SubID'].toString() : null;
+
+    TimeOfDay startTime = isEdit
+        ? TimeOfDay(
+            hour: int.parse(existingItem['StartTime'].split(":")[0]),
+            minute: int.parse(existingItem['StartTime'].split(":")[1]),
+          )
+        : const TimeOfDay(hour: 7, minute: 0);
+    TimeOfDay endTime = isEdit
+        ? TimeOfDay(
+            hour: int.parse(existingItem['EndTime'].split(":")[0]),
+            minute: int.parse(existingItem['EndTime'].split(":")[1]),
+          )
+        : const TimeOfDay(hour: 8, minute: 0);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+          ),
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+            left: 20,
+            right: 20,
+            top: 20,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                isEdit ? "Update Schedule" : "Add New Schedule",
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+              ),
+              const SizedBox(height: 20),
+              _customDropdown(
+                value: mTeacherId,
+                items: teachers
+                    .map(
+                      (t) => DropdownMenuItem(
+                        value: t['TeacherID'].toString(),
+                        child: Text(t['TeacherName']),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (v) => setModalState(() => mTeacherId = v),
+              ),
+              const SizedBox(height: 15),
+              _customDropdown(
+                value: mSubId,
+                items: subjects
+                    .map(
+                      (s) => DropdownMenuItem(
+                        value: s['SubID'].toString(),
+                        child: Text(s['SubName']),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (v) => setModalState(() => mSubId = v),
+              ),
+              const SizedBox(height: 15),
+              Row(
+                children: [
+                  Expanded(
+                    child: _modalTimeField(
+                      context,
+                      "Start",
+                      startTime,
+                      (p) => setModalState(() => startTime = p),
+                    ),
+                  ),
+                  const SizedBox(width: 15),
+                  Expanded(
+                    child: _modalTimeField(
+                      context,
+                      "End",
+                      endTime,
+                      (p) => setModalState(() => endTime = p),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 30),
+              Row(
+                children: [
+                  Expanded(
+                    child: _actionBtn(
+                      "Cancel",
+                      Colors.grey,
+                      () => Navigator.pop(context),
+                    ),
+                  ),
+                  const SizedBox(width: 15),
+                  Expanded(
+                    child: _actionBtn(
+                      isEdit ? "Update" : "Save",
+                      primaryBlue,
+                      () {
+                        if (mTeacherId != null && mSubId != null) {
+                          _saveToDatabase(
+                            mTeacherId!,
+                            mSubId!,
+                            _formatTime(startTime),
+                            _formatTime(endTime),
+                            detailId: isEdit
+                                ? existingItem['DetailID'].toString()
+                                : null,
+                            scheduleId: isEdit
+                                ? existingItem['ScheduleID'].toString()
+                                : null,
+                          );
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // --- REUSABLE WIDGETS ---
+
+  Widget _inputLabel(String text) => Padding(
+    padding: const EdgeInsets.only(bottom: 6),
+    child: Text(
+      text,
+      style: const TextStyle(
+        fontWeight: FontWeight.bold,
+        color: Colors.blueGrey,
+        fontSize: 13,
+      ),
+    ),
+  );
+
+  Widget _customDropdown({
+    String? value,
+    required List<DropdownMenuItem<String>> items,
+    required Function(String?) onChanged,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderBlue),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: value,
+          isExpanded: true,
+          items: items,
+          onChanged: onChanged,
+        ),
+      ),
+    );
+  }
+
+  Widget _timeBox(String time, Color color, bool isLeft) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: isLeft
+            ? const BorderRadius.horizontal(left: Radius.circular(5))
+            : const BorderRadius.horizontal(right: Radius.circular(5)),
+      ),
+      child: Text(
+        time,
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+          fontSize: 11,
+        ),
+      ),
+    );
+  }
+
+  Widget _modalTimeField(
+    BuildContext context,
+    String label,
+    TimeOfDay time,
+    Function(TimeOfDay) onPick,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.grey,
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 5),
+        InkWell(
+          onTap: () async {
+            final p = await showTimePicker(context: context, initialTime: time);
+            if (p != null) onPick(p);
+          },
+          child: Container(
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(6),
-              color: Colors.grey[300], // Background for the right side
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: borderBlue),
             ),
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[700], // Darker active start time
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(6),
-                      bottomLeft: Radius.circular(6),
-                    ),
-                  ),
-                  child: const Text(
-                    "7:00 AM",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                  ),
+                Text(
+                  time.format(context),
+                  style: const TextStyle(fontSize: 12),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  child: Text(
-                    "8:00 AM",
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
+                const Icon(Icons.access_time, size: 18, color: Colors.grey),
               ],
             ),
           ),
-        ],
+        ),
+      ],
+    );
+  }
+
+  Widget _actionBtn(String label, Color color, VoidCallback onTap) {
+    return ElevatedButton(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        padding: const EdgeInsets.symmetric(vertical: 16),
+      ),
+      onPressed: onTap,
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }

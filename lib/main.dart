@@ -4,10 +4,9 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ungthoung_app/providers/auth_provider.dart';
-
-import 'package:ungthoung_app/app_colors.dart';
-import 'package:ungthoung_app/app_dashboard.dart';
-import 'package:ungthoung_app/login_user.dart';
+import 'package:ungthoung_app/themes/app_colors.dart';
+import 'package:ungthoung_app/admin/app_dashboard.dart';
+import 'package:ungthoung_app/module/auth/login_user.dart';
 import 'package:ungthoung_app/students/student_dashboard.dart';
 import 'package:ungthoung_app/teachers/teacher_dashboard.dart';
 
