@@ -1,4 +1,4 @@
-// ignore_for_file: avoid_print, unnecessary_to_list_in_spreads, use_build_context_synchronously
+// ignore_for_file: curly_braces_in_flow_control_structures, unnecessary_to_list_in_spreads
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -14,123 +14,116 @@ class MyProfileScreen extends StatefulWidget {
 }
 
 class _MyProfileScreenState extends State<MyProfileScreen> {
-  final Color primaryBlue = const Color(0xFF4A5BF6);
-  final Color backgroundGrey = const Color(0xFFF0F0F0);
-  final Color textDark = const Color(0xFF333333);
-  final Color headerCyan = const Color(0xFF00C2FF);
-
+  final Color primaryBlue = const Color(0xFF1A73E8);
   bool isProfileTab = true;
   bool isLoading = true;
   Map<String, dynamic>? studentData;
-  List<dynamic> studiesData = [];
+  Map<String, dynamic>? resultsData;
 
   @override
   void initState() {
     super.initState();
-    fetchData();
+    fetchAllData();
   }
 
-  Future<void> fetchData() async {
+  Future<void> fetchAllData() async {
     final sp = await SharedPreferences.getInstance();
     final token = sp.getString('TOKEN');
 
-    // 1. Double-check this URL. Can you open it in your computer's browser?
+    // must have token to proceed, otherwise show error and return
     const String baseUrl = "http://10.0.2.2:8000/api";
 
+    final headers = {
+      'Authorization': 'Bearer $token',
+      'Accept': 'application/json',
+    };
+
     try {
-      final headers = {
-        'Authorization': 'Bearer $token',
-        'Accept': 'application/json',
-      };
-
-      print("Attempting to fetch data..."); // Debug Log
-
-      final responses = await Future.wait([
-        http
-            .get(Uri.parse('$baseUrl/my-profile'), headers: headers)
-            .timeout(const Duration(seconds: 10)),
-        http
-            .get(Uri.parse('$baseUrl/my-results'), headers: headers)
-            .timeout(const Duration(seconds: 10)),
-      ]);
-
-      if (responses[0].statusCode == 200 && responses[1].statusCode == 200) {
-        setState(() {
-          studentData = json.decode(responses[0].body)['data'];
-          studiesData = json.decode(responses[1].body)['data'];
-          isLoading = false; // Stops the loading spinner
-        });
-        print("Data loaded successfully!");
+      // get data from 2 APIs in sequence, but even if the first one fails, we still want to try the second one
+      final profileRes = await http.get(
+        Uri.parse('$baseUrl/my-profile'),
+        headers: headers,
+      );
+      if (profileRes.statusCode == 200) {
+        studentData = json.decode(profileRes.body)['data'];
       } else {
-        print(
-          "Server Error: Profile(${responses[0].statusCode}) Results(${responses[1].statusCode})",
+        debugPrint("Profile API Error: ${profileRes.statusCode}");
+      }
+
+      // get results data
+      final resultRes = await http.get(
+        Uri.parse('$baseUrl/my-results'),
+        headers: headers,
+      );
+      if (resultRes.statusCode == 200) {
+        resultsData = json.decode(resultRes.body)['data'];
+      } else {
+        // if results API fails, we can still show profile data, so we just set
+        resultsData = {};
+        debugPrint(
+          "Result API Error: ${resultRes.statusCode} - ${resultRes.body}",
         );
-        setState(() => isLoading = false);
       }
     } catch (e) {
-      print("CONNECTION ERROR: $e");
-      // If it prints "Connection refused", your Laravel server isn't running.
-      // If it prints "Timeout", the IP address is wrong.
-      setState(() => isLoading = false);
+      debugPrint("Network Error: $e");
+    } finally {
+      // if the widget is still mounted, update the loading state to false
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: backgroundGrey,
+      backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
         backgroundColor: primaryBlue,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
         title: Text(
-          isProfileTab ? "My Profile" : "My Result",
-          style: GoogleFonts.poppins(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
+          "My Profile",
+          style: GoogleFonts.poppins(color: Colors.white),
         ),
         centerTitle: true,
       ),
       body: isLoading
           ? Center(child: CircularProgressIndicator(color: primaryBlue))
-          : RefreshIndicator(
-              onRefresh: fetchData,
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildHeaderSection(),
-                    const SizedBox(height: 10),
-                    Divider(color: Colors.grey[400], thickness: 1),
-                    const SizedBox(height: 20),
-                    _buildTabSwitcher(),
-                    const SizedBox(height: 20),
-                    isProfileTab
-                        ? _buildProfileContent()
-                        : _buildResultContent(),
-                  ],
-                ),
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  _buildHeader(),
+                  const SizedBox(height: 20),
+                  _buildTabSwitcher(),
+                  const SizedBox(height: 20),
+                  isProfileTab ? _buildProfileDetails() : _buildResultDetails(),
+                ],
               ),
             ),
     );
   }
 
-  Widget _buildHeaderSection() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Expanded(
-          child: Column(
+  Widget _buildHeader() {
+    return Container(
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 35,
+            backgroundColor: Colors.grey[200],
+            child: const Icon(Icons.person, size: 50),
+          ),
+          const SizedBox(width: 15),
+          Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                // Showing Khmer name if available, otherwise English
-                studentData?['StuNameKH'] ??
-                    studentData?['StuNameEN'] ??
-                    "Unknown",
+                studentData?['StuNameEN'] ?? "N/A",
                 style: GoogleFonts.poppins(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -138,31 +131,20 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
               ),
               Text(
                 "ID : ${studentData?['StuID'] ?? 'N/A'}",
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                  fontWeight: FontWeight.w600,
-                ),
+                style: GoogleFonts.poppins(color: Colors.grey),
               ),
             ],
           ),
-        ),
-        const CircleAvatar(
-          radius: 30,
-          backgroundColor: Colors.black12,
-          child: Icon(Icons.person, size: 40, color: Colors.black54),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
   Widget _buildTabSwitcher() {
     return Container(
-      height: 40,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: primaryBlue),
+        borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
         children: [_tabButton("Profile", true), _tabButton("Result", false)],
@@ -171,21 +153,23 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
   }
 
   Widget _tabButton(String title, bool isProfile) {
-    bool isActive = (isProfileTab == isProfile);
+    bool active = isProfileTab == isProfile;
     return Expanded(
-      child: InkWell(
+      child: GestureDetector(
         onTap: () => setState(() => isProfileTab = isProfile),
         child: Container(
-          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: isActive ? primaryBlue : Colors.transparent,
-            borderRadius: BorderRadius.circular(18),
+            color: active ? primaryBlue : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
           ),
-          child: Text(
-            title,
-            style: GoogleFonts.poppins(
-              fontWeight: FontWeight.bold,
-              color: isActive ? Colors.white : primaryBlue,
+          child: Center(
+            child: Text(
+              title,
+              style: GoogleFonts.poppins(
+                color: active ? Colors.white : primaryBlue,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ),
@@ -193,173 +177,170 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
     );
   }
 
-  Widget _buildProfileContent() {
+  Widget _buildProfileDetails() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Column(
+        children: [
+          _infoRow("Name English", studentData?['StuNameEN']),
+          _infoRow("Name Khmer", studentData?['StuNameKH']),
+          _infoRow("StuName", studentData?['StuName']),
+          _infoRow("Gender", studentData?['Gender']),
+          // _infoRow("DOB", studentData?['DOB']),
+          _infoRow(
+            "DOB",
+            studentData?['DOB'] != null
+                ? studentData!['DOB'].toString().split('T')[0]
+                : "N/A",
+          ),
+          _infoRow("Phone", studentData?['Phone']),
+          _infoRow("Email", studentData?['Email']),
+          _infoRow("Address", studentData?['Address']),
+          _infoRow("Phone", studentData?['Phone']),
+          _infoRow("Promotion", studentData?['Promotion']),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildResultDetails() {
+    if (resultsData == null || resultsData!.isEmpty)
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.only(top: 50),
+          child: Text("No data available"),
+        ),
+      );
+
+    return Column(
+      children: resultsData!.entries.map((entry) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Text(
+                "Semester ${entry.key}",
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: primaryBlue,
+                ),
+              ),
+            ),
+            // change this to table later if you want, but for now just show it as cards
+            ...(entry.value as List)
+                .map((item) => _buildScoreCard(item))
+                .toList(),
+            const SizedBox(height: 10),
+          ],
+        );
+      }).toList(),
+    );
+  }
+
+  // create new widget to show each subject score
+  Widget _buildScoreCard(Map<String, dynamic> item) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  item['subject']?['SubName'] ?? 'N/A', // ប្រើ SubName តាម DB
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  "Grade: ${item['Grade'] ?? '-'}",
+                  style: GoogleFonts.poppins(
+                    color: Colors.red,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const Divider(height: 20),
+          // show scores in a row, if the score is null show 0, and if it's total score make it bold
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _scoreItem("Quiz", item['Quiz']),
+              _scoreItem("HW", item['Homework']),
+              _scoreItem("Att", item['AttendanceScore']),
+              _scoreItem("Mid", item['Midterm']),
+              _scoreItem("Fin", item['Final']),
+              _scoreItem("Total", item['TotalScore'], isBold: true),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _scoreItem(String label, dynamic value, {bool isBold = false}) {
     return Column(
       children: [
-        _buildInfoItem(
-          "Date of Birth",
-          studentData?['DOB']?.toString().split('T')[0] ?? "N/A",
+        Text(
+          label,
+          style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[600]),
         ),
-        _buildInfoItem("Gender", studentData?['Gender'] ?? "N/A"),
-        Row(
-          children: [
-            Expanded(
-              child: _buildInfoItem(
-                "Father's Name",
-                studentData?['FatherName'] ?? "N/A",
-              ),
-            ),
-            Expanded(
-              child: _buildInfoItem("Job", studentData?['FatherJob'] ?? "N/A"),
-            ),
-          ],
+        Text(
+          "${value ?? 0}",
+          style: GoogleFonts.poppins(
+            fontSize: 14,
+            fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
+            color: isBold ? primaryBlue : Colors.black87,
+          ),
         ),
-        Row(
-          children: [
-            Expanded(
-              child: _buildInfoItem(
-                "Mother's Name",
-                studentData?['MotherName'] ?? "N/A",
-              ),
-            ),
-            Expanded(
-              child: _buildInfoItem("Job", studentData?['MotherJob'] ?? "N/A"),
-            ),
-          ],
-        ),
-        _buildInfoItem(
-          "Contact",
-          studentData?['FamilyContact'] ?? studentData?['Phone'] ?? "N/A",
-        ),
-        _buildInfoItem("Address", studentData?['Address'] ?? "N/A"),
       ],
     );
   }
 
-  Widget _buildResultContent() {
-    if (studiesData.isEmpty) {
-      return const Center(child: Text("No academic results found."));
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            "Current Academic Results",
-            style: GoogleFonts.poppins(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-            decoration: BoxDecoration(
-              color: headerCyan,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              children: [
-                _buildCell("Subject", flex: 3, isHeader: true),
-                _buildCell("Quiz", isHeader: true),
-                _buildCell("HW", isHeader: true),
-                _buildCell("Mid", isHeader: true),
-                _buildCell("Final", isHeader: true),
-                _buildCell("Total", isHeader: true),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-          ...studiesData.map((item) {
-            // FIX: Map accurately to your API response
-            return _buildResultRow(
-              item['subject']?['SubjectName'] ?? "N/A",
-              item['Quiz']?.toString() ?? "0",
-              item['Homework']?.toString() ?? "0",
-              item['Midterm']?.toString() ?? "0",
-              item['Final']?.toString() ?? "0",
-              item['TotalScore']?.toString() ?? "0",
-            );
-          }).toList(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildResultRow(
-    String sub,
-    String q1,
-    String hw,
-    String mid,
-    String fin,
-    String total,
-  ) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.black12),
-      ),
-      child: Row(
-        children: [
-          _buildCell(sub, flex: 3, isBold: true),
-          _buildCell(q1),
-          _buildCell(hw),
-          _buildCell(mid),
-          _buildCell(fin),
-          _buildCell(total, isBold: true),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCell(
-    String text, {
-    int flex = 1,
-    bool isHeader = false,
-    bool isBold = false,
-  }) {
-    return Expanded(
-      flex: flex,
-      child: Text(
-        text,
-        textAlign: TextAlign.center,
-        style: GoogleFonts.poppins(
-          fontSize: 10,
-          fontWeight: (isHeader || isBold)
-              ? FontWeight.bold
-              : FontWeight.normal,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoItem(String label, String value) {
+  Widget _infoRow(String label, dynamic value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 15),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
+          Text(label, style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
           Text(
-            label,
-            style: GoogleFonts.poppins(
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-              color: primaryBlue,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            value,
-            style: GoogleFonts.poppins(fontSize: 14, color: textDark),
+            value?.toString() ?? "N/A",
+            style: GoogleFonts.poppins(color: Colors.grey[600]),
           ),
         ],
       ),

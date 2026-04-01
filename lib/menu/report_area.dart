@@ -1,159 +1,192 @@
-import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+// ignore_for_file: library_private_types_in_public_api, use_key_in_widget_constructors
 
-void main() {
-  runApp(
-    const MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: ReportingScreen(),
-    ),
-  );
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+
+// ==========================================
+// ផ្នែកទី ១: MODELS (សម្រាប់កាន់ទិន្នន័យ)
+// ==========================================
+
+class Attendance {
+  final String date;
+  final String student;
+  final String status;
+  Attendance({required this.date, required this.student, required this.status});
 }
 
-class ReportingScreen extends StatelessWidget {
-  const ReportingScreen({super.key});
+class StudyScore {
+  final String student;
+  final double total;
+  final String grade;
+  StudyScore({required this.student, required this.total, required this.grade});
+}
 
-  final Color primaryBlue = const Color(0xFF4A5BF6);
-  final Color backgroundGrey = const Color(0xFFF0F0F0);
-  final Color textDark = const Color(0xFF333333);
+class ScheduleDetail {
+  final String subject;
+  final String time;
+  final String room;
+  ScheduleDetail({
+    required this.subject,
+    required this.time,
+    required this.room,
+  });
+}
+
+// ==========================================
+// ផ្នែកទី ២: UI SCREEN
+// ==========================================
+
+class ReportingScreen extends StatefulWidget {
+  @override
+  _ReportingScreenState createState() => _ReportingScreenState();
+}
+
+class _ReportingScreenState extends State<ReportingScreen> {
+  DateTime fromDate = DateTime.now();
+  DateTime toDate = DateTime.now();
+  String? selectedClass;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: backgroundGrey,
+      backgroundColor: Color(0xFFF0F2F5),
       appBar: AppBar(
-        backgroundColor: primaryBlue,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            Navigator.pop(context);
-          },
-        ),
         title: Text(
-          "Reporting",
-          style: GoogleFonts.poppins(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
+          "Reporting System",
+          style: TextStyle(fontWeight: FontWeight.bold),
         ),
+        backgroundColor: Colors.blue[800],
+        elevation: 0,
         centerTitle: true,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- Section 1: Attendance Report ---
-            _buildSectionHeader("Attendance Report"),
-            const SizedBox(height: 10),
-
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-              ),
+            // --- ផ្នែក Attendance Report ---
+            _buildSectionCard(
+              title: "Attendance Report",
+              icon: Icons.calendar_month,
               child: Column(
                 children: [
-                  // From / To Date Row
                   Row(
                     children: [
-                      Expanded(
-                        child: _buildLabeledDateInput("From", "2025-11-29"),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _buildLabeledDateInput("To", "2025-11-29"),
-                      ),
+                      Expanded(child: _buildDatePicker("From", fromDate)),
+                      SizedBox(width: 12),
+                      Expanded(child: _buildDatePicker("To", toDate)),
                     ],
                   ),
-                  const SizedBox(height: 16),
-
-                  // Class Dropdown
-                  _buildDropdownInput("10 - A"),
+                  SizedBox(height: 15),
+                  _buildDropdown("Select Class", ['10-A', '10-B', '11-C']),
+                  SizedBox(height: 15),
+                  _buildActionButton("Export Attendance", Colors.blue[700]!),
                 ],
               ),
             ),
 
-            const SizedBox(height: 16),
-            _buildExportButton(),
-
-            const SizedBox(height: 30),
-
-            // --- Section 2: Score Report ---
-            _buildSectionHeader("Score Report"),
-            const SizedBox(height: 10),
-
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-              ),
+            // --- ផ្នែក Score Report ---
+            _buildSectionCard(
+              title: "Score (Study) Report",
+              icon: Icons.assignment_turned_in,
               child: Column(
                 children: [
-                  _buildDropdownInput("Select the class", isPlaceholder: true),
-                  const SizedBox(height: 16),
-                  _buildDropdownInput("Select Month", isPlaceholder: true),
+                  _buildDropdown("Select Class", ['10-A', '10-B', '11-C']),
+                  SizedBox(height: 12),
+                  _buildDropdown("Select Month", [
+                    'January',
+                    'February',
+                    'March',
+                  ]),
+                  SizedBox(height: 15),
+                  _buildActionButton(
+                    "Generate Score Sheet",
+                    Colors.green[600]!,
+                  ),
                 ],
               ),
             ),
 
-            const SizedBox(height: 16),
-            _buildExportButton(),
-
-            const SizedBox(height: 20),
+            // --- ផ្នែក Schedule Summary ---
+            _buildSectionCard(
+              title: "Schedule Details",
+              icon: Icons.schedule,
+              child: Column(
+                children: [
+                  _buildDropdown("Select Teacher", ['Mr. John', 'Ms. Savy']),
+                  SizedBox(height: 15),
+                  _buildActionButton("View Schedule", Colors.orange[700]!),
+                ],
+              ),
+            ),
+            SizedBox(height: 30),
           ],
         ),
       ),
     );
   }
 
-  // --- Reusable Widgets ---
+  // ==========================================
+  // ផ្នែកទី ៣: REUSABLE WIDGETS (WIDGET ប្រើឡើងវិញ)
+  // ==========================================
 
-  Widget _buildSectionHeader(String title) {
-    return Text(
-      title,
-      style: GoogleFonts.poppins(
-        fontSize: 16,
-        fontWeight: FontWeight.bold,
-        color: Colors.grey[700],
+  Widget _buildSectionCard({
+    required String title,
+    required IconData icon,
+    required Widget child,
+  }) {
+    return Container(
+      margin: EdgeInsets.all(16),
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 10,
+            offset: Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: Colors.blue[800]),
+              SizedBox(width: 10),
+              Text(
+                title,
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          Divider(height: 25),
+          child,
+        ],
       ),
     );
   }
 
-  Widget _buildLabeledDateInput(String label, String date) {
+  Widget _buildDatePicker(String label, DateTime date) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: GoogleFonts.poppins(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: Colors.grey[600],
-          ),
-        ),
-        const SizedBox(height: 8),
+        Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+          margin: EdgeInsets.only(top: 5),
+          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
           decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border.all(color: primaryBlue, width: 1),
-            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.blue.shade100),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                date,
-                style: GoogleFonts.poppins(
-                  color: Colors.grey[700],
-                  fontSize: 13,
-                ),
+                DateFormat('yyyy-MM-dd').format(date),
+                style: TextStyle(fontSize: 13),
               ),
-              Icon(Icons.access_time, size: 18, color: Colors.grey[500]),
+              Icon(Icons.access_time, size: 16, color: Colors.blue),
             ],
           ),
         ),
@@ -161,64 +194,39 @@ class ReportingScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildDropdownInput(String text, {bool isPlaceholder = false}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: primaryBlue, width: 1),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: isPlaceholder ? null : text,
-          hint: isPlaceholder
-              ? Text(
-                  text,
-                  style: GoogleFonts.poppins(
-                    color: Colors.grey[600],
-                    fontSize: 14,
-                  ),
-                )
-              : null,
-          icon: const Icon(Icons.keyboard_arrow_down),
-          isExpanded: true,
-          items: isPlaceholder
-              ? []
-              : [text].map((String item) {
-                  return DropdownMenuItem<String>(
-                    value: item,
-                    child: Text(
-                      item,
-                      style: GoogleFonts.poppins(color: Colors.black87),
-                    ),
-                  );
-                }).toList(),
-          onChanged: (_) {},
+  Widget _buildDropdown(String hint, List<String> items) {
+    return DropdownButtonFormField<String>(
+      decoration: InputDecoration(
+        contentPadding: EdgeInsets.symmetric(horizontal: 12),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        enabledBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: Colors.blue.shade100),
         ),
       ),
+      hint: Text(hint, style: TextStyle(fontSize: 14)),
+      items: items
+          .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+          .toList(),
+      onChanged: (val) {},
     );
   }
 
-  Widget _buildExportButton() {
+  Widget _buildActionButton(String label, Color color) {
     return SizedBox(
       width: double.infinity,
-      height: 50,
+      height: 48,
       child: ElevatedButton(
-        onPressed: () {},
         style: ElevatedButton.styleFrom(
-          backgroundColor: primaryBlue,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          elevation: 0,
+          backgroundColor: color,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
+        onPressed: () {},
         child: Text(
-          "Export Report",
-          style: GoogleFonts.poppins(
+          label,
+          style: TextStyle(
             color: Colors.white,
+            fontSize: 15,
             fontWeight: FontWeight.bold,
-            fontSize: 16,
           ),
         ),
       ),
