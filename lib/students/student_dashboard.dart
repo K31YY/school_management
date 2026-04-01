@@ -10,7 +10,6 @@ import 'package:ungthoung_app/students/my_result.dart';
 import 'package:ungthoung_app/students/schedule.dart';
 import 'package:ungthoung_app/students/stu_absent.dart';
 import 'package:ungthoung_app/students/stu_attandance.dart';
-import 'package:ungthoung_app/students/stu_class.dart';
 
 void main() {
   runApp(const StudentDashboard());

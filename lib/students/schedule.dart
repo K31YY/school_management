@@ -14,7 +14,6 @@ class ViewSchedule extends StatefulWidget {
 }
 
 class _ViewScheduleState extends State<ViewSchedule> {
-  // ប្រសិនបើប្រើ Emulator សូមប្រើ 10.0.2.2 បើប្រើទូរសព្ទផ្ទាល់ត្រូវប្រើ IP ម៉ាស៊ីន
   final String baseUrl = "http://10.0.2.2:8000/api";
 
   List<dynamic> assignedSchedules = [];
@@ -49,8 +48,6 @@ class _ViewScheduleState extends State<ViewSchedule> {
       if (response.statusCode == 200) {
         final dynamic responseData = json.decode(response.body);
         debugPrint("Full Data: $responseData");
-
-        // ឆែកមើលរចនាសម្ព័ន្ធ JSON ពី Laravel (ភាគច្រើនគឺរុំក្នុង key 'data')
         List<dynamic> allData = [];
         if (responseData is Map && responseData.containsKey('data')) {
           allData = responseData['data'];
@@ -59,7 +56,6 @@ class _ViewScheduleState extends State<ViewSchedule> {
         }
 
         setState(() {
-          // ការ Filter ដោយប្រើ lowercase និង trim ដើម្បីបង្កើនភាពច្បាស់លាស់
           assignedSchedules = allData.where((item) {
             String dayFromApi = item['DayOfWeek']
                 .toString()
@@ -132,7 +128,7 @@ class _ViewScheduleState extends State<ViewSchedule> {
             return GestureDetector(
               onTap: () {
                 setState(() => selectedDay = day);
-                _fetchSchedules(); // ទាញទិន្នន័យថ្មីរាល់ពេលដូរថ្ងៃ
+                _fetchSchedules(); // get new data for the selected day
               },
               child: Container(
                 margin: const EdgeInsets.symmetric(horizontal: 4),

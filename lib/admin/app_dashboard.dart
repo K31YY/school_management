@@ -296,7 +296,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 Icons.bar_chart,
                 const Color(0xFFD9EEFD),
                 const Color(0xFF5AC8FA),
-                () => _navigateTo(const ReportingScreen()),
+                () => _navigateTo(ReportingScreen()),
               ),
               _buildGridItem(
                 'Schedule',
