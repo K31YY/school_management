@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:ungthoung_app/providers/auth_provider.dart';
-// Keep all your original imports
 import 'package:ungthoung_app/menu/views_student.dart';
-import 'package:ungthoung_app/teachers/attandance.dart';
+import 'package:ungthoung_app/students/stu_attandance.dart';
 import 'package:ungthoung_app/teachers/teacher.class.dart';
 import 'package:ungthoung_app/teachers/add_score.dart';
 import 'package:ungthoung_app/teachers/report.dart';
@@ -258,7 +257,7 @@ class _TeacherDashboardState extends ConsumerState<TeacherDashboard> {
           _DrawerTile(
             Icons.assignment,
             "Attendance",
-            () => _navigateTo(const MakeAttendanceScreen()),
+            () => _navigateTo(const MyAttendanceScreen()),
           ),
           _DrawerTile(
             Icons.class_,

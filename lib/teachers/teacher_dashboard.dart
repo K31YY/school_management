@@ -78,6 +78,7 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
           _isLoading = false;
         });
       }
+      
     } catch (e) {
       debugPrint("Dashboard Error: $e");
       if (mounted) setState(() => _isLoading = false);
@@ -125,6 +126,7 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
     }
   }
 
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -158,7 +160,7 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                     const SizedBox(height: 24),
                     _buildProfileCard(),
                     const SizedBox(height: 20),
-                    _buildStatsRow(), // Removed 'const' here
+                    _buildStatsRow(),
                     const SizedBox(height: 24),
                     _buildSectionHeader(
                       "Latest Admission",
@@ -173,11 +175,8 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                       isIconSmall: true,
                     ),
                     const SizedBox(height: 16),
-                    const _StudentListItem(
-                      name: "Neat Tina",
-                      grade: "Grade 10",
-                    ),
-                    const _StudentListItem(name: "Reun Rin", grade: "Grade 10"),
+                    const _StudentListItem(name: "Soung Sonica", grade: "12 A"),
+                    const _StudentListItem(name: "Ny Emey", grade: "12 B"),
                     const SizedBox(height: 30),
                   ],
                 ),
@@ -355,7 +354,7 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
           _drawerTile(
             Icons.assignment,
             "Attendance",
-            () => _navigateTo(const MakeAttendanceScreen()),
+            () => _navigateTo(const AddAttendanceScreen()),
           ),
           // Locate this in your _buildDrawer() method:
           _drawerTile(

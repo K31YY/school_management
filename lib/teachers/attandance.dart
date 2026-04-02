@@ -1,321 +1,249 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-class MakeAttendanceScreen extends StatefulWidget {
-  const MakeAttendanceScreen({super.key});
+class AddAttendanceScreen extends StatefulWidget {
+  const AddAttendanceScreen({super.key});
 
   @override
-  State<MakeAttendanceScreen> createState() => _MakeAttendanceScreenState();
+  State<AddAttendanceScreen> createState() => _AddAttendanceScreenState();
 }
 
-class _MakeAttendanceScreenState extends State<MakeAttendanceScreen> {
-  // Colors
-  final Color primaryBlue = const Color(0xFF4A5BF6);
-  final Color backgroundGrey = const Color(0xFFF0F0F0);
-  final Color successGreen = const Color(0xFF00C853);
-  final Color textDark = const Color(0xFF333333);
+class _AddAttendanceScreenState extends State<AddAttendanceScreen> {
+  final String baseUrl = "http://10.0.2.2:8000/api";
+  List scheduleDetails = [];
+  List students = [];
 
-  // State
-  String selectedStatus = "P"; // Default to Present
+  int? selectedDetailID;
+  DateTime selectedDate = DateTime.now();
 
-  // Mock Data
-  final List<Map<String, String>> students = [
-    {"name": "Rom Sarun", "id": "ID: UT0001"},
-    {"name": "Khuoeurt Sokhy", "id": "ID: UT0002"},
-    {"name": "Neat Tina", "id": "ID: UT0003"},
-    {"name": "Reun Rin", "id": "ID: UT0004"},
-    {"name": "Youm Danet", "id": "ID: UT0005"},
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _fetchInitialData();
+  }
 
-  // --- NEW FUNCTION: Shows "The Reason" Popup ---
-  void _showReasonBottomSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true, // Needed so keyboard doesn't cover input
-      backgroundColor: Colors.transparent, // Allows rounded corners to show
-      builder: (context) {
-        return Container(
-          padding: EdgeInsets.only(
-            left: 24,
-            right: 24,
-            top: 24,
-            // Add padding at bottom equal to keyboard height + 24
-            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+  // get data for schedule details and students from API
+  Future<void> _fetchInitialData() async {
+    EasyLoading.show(status: 'Loading...');
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      String? token = prefs.getString('TOKEN');
+      final headers = {
+        "Accept": "application/json",
+        "Authorization": "Bearer $token",
+      };
+
+      final responses = await Future.wait([
+        http.get(Uri.parse("$baseUrl/schedule-details"), headers: headers),
+        http.get(Uri.parse("$baseUrl/students"), headers: headers),
+      ]);
+
+      if (responses[0].statusCode == 200 && responses[1].statusCode == 200) {
+        setState(() {
+          scheduleDetails = json.decode(responses[0].body)['data'];
+          List rawStudents = json.decode(responses[1].body)['data'];
+
+          // generate student list with default attendance
+          students = rawStudents.map((s) {
+            return {
+              "StuID": s['StuID'],
+              "StuNameKH": s['StuNameKH'],
+              "Status": "P", // P = Present, A = Absent, P_Auth = Permission
+              "Reason": "",
+            };
+          }).toList();
+        });
+        EasyLoading.dismiss();
+      }
+    } catch (e) {
+      EasyLoading.showError("Error: $e");
+    }
+  }
+
+  // function to submit attendance data to backend (POST request)
+  Future<void> _submitAttendance() async {
+    if (selectedDetailID == null) {
+      EasyLoading.showInfo("សូមជ្រើសរើសម៉ោងសិក្សា!");
+      return;
+    }
+
+    EasyLoading.show(status: 'Saving...');
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      String? token = prefs.getString('TOKEN');
+
+      // generate data for submission to backend
+      final body = {
+        "attendance_data": students
+            .map(
+              (s) => {
+                "StuID": s['StuID'],
+                "DetailID": selectedDetailID,
+                "AttDate": selectedDate.toIso8601String().split('T')[0],
+                "Status": s['Status'],
+                "Reason": s['Reason'],
+              },
+            )
+            .toList(),
+      };
+
+      final res = await http.post(
+        Uri.parse("$baseUrl/attendances"),
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "Authorization": "Bearer $token",
+        },
+        body: jsonEncode(body),
+      );
+
+      if (res.statusCode == 201) {
+        EasyLoading.showSuccess("Attendance saved successfully!");
+      } else {
+        EasyLoading.showError("Failed: ${res.statusCode}");
+      }
+    } catch (e) {
+      EasyLoading.showError("Error: $e");
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Take Attendance"),
+        backgroundColor: const Color(0xFF4A5BF6),
+        actions: [
+          IconButton(
+            onPressed: _submitAttendance,
+            icon: const Icon(Icons.save, color: Colors.white),
           ),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(30),
-              topRight: Radius.circular(30),
+        ],
+      ),
+      body: Column(
+        children: [
+          _buildHeaderFilters(),
+          Expanded(child: _buildStudentList()),
+        ],
+      ),
+    );
+  }
+
+  // UI: Header with dropdown for schedule details and date picker
+  Widget _buildHeaderFilters() {
+    return Container(
+      padding: const EdgeInsets.all(15),
+      color: Colors.white,
+      child: Column(
+        children: [
+          DropdownButtonFormField<int>(
+            decoration: const InputDecoration(labelText: "Select Class/Time"),
+            value: selectedDetailID,
+            items: scheduleDetails
+                .map(
+                  (d) => DropdownMenuItem<int>(
+                    value: d['DetailID'],
+                    child: Text(
+                      "${d['subject']['SubName']} (${d['StartTime']}-${d['EndTime']})",
+                    ),
+                  ),
+                )
+                .toList(),
+            onChanged: (v) => setState(() => selectedDetailID = v),
+          ),
+          const SizedBox(height: 10),
+          ListTile(
+            title: Text("Date: ${selectedDate.toLocal()}".split(' ')[0]),
+            trailing: const Icon(Icons.calendar_today),
+            onTap: () async {
+              DateTime? picked = await showDatePicker(
+                context: context,
+                initialDate: selectedDate,
+                firstDate: DateTime(2000),
+                lastDate: DateTime(2100),
+              );
+              if (picked != null) setState(() => selectedDate = picked);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  // UI: list student 
+  Widget _buildStudentList() {
+    return ListView.builder(
+      itemCount: students.length,
+      itemBuilder: (context, index) {
+        var s = students[index];
+        return Card(
+          margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          child: ListTile(
+            leading: CircleAvatar(child: Text("${index + 1}")),
+            title: Text(s['StuNameKH']),
+            subtitle: s['Status'] != 'P'
+                ? Text("Reason: ${s['Reason']}")
+                : null,
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _statusButton(index, 'P', Colors.green, "P"),
+                _statusButton(index, 'A', Colors.red, "A"),
+                _statusButton(index, 'P_Auth', Colors.orange, "L"),
+              ],
             ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min, // Wrap content height
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "The Reason",
-                style: GoogleFonts.poppins(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              // Input Field
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: TextField(
-                  decoration: InputDecoration(
-                    hintText: "Enter the reason of absent",
-                    hintStyle: GoogleFonts.poppins(color: Colors.grey[400]),
-                    border: InputBorder.none,
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              // Apply Button
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context); // Close the sheet
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryBlue,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: Text(
-                    "Apply",
-                    style: GoogleFonts.poppins(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
-              ),
-            ],
           ),
         );
       },
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: backgroundGrey,
-      appBar: AppBar(
-        backgroundColor: primaryBlue,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            Navigator.pop(context);
-          },
+  // Widget for attendance status buttons (P, A, L)
+  Widget _statusButton(int index, String status, Color color, String label) {
+    bool isSelected = students[index]['Status'] == status;
+    return GestureDetector(
+      onTap: () {
+        setState(() => students[index]['Status'] = status);
+        if (status != 'P') _showReasonDialog(index);
+      },
+      child: Container(
+        margin: const EdgeInsets.only(left: 5),
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: isSelected ? color : Colors.grey[200],
+          shape: BoxShape.circle,
         ),
-        title: Text(
-          "Make Attendance",
-          style: GoogleFonts.poppins(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
+        child: Text(
+          label,
+          style: TextStyle(color: isSelected ? Colors.white : Colors.black),
         ),
-        centerTitle: true,
+      ),
+    );
+  }
+
+  // show dailog to enter reason for absence when status is A or L
+  void _showReasonDialog(int index) {
+    TextEditingController reasonCtrl = TextEditingController(
+      text: students[index]['Reason'],
+    );
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Reason for Absence"),
+        content: TextField(
+          controller: reasonCtrl,
+          decoration: const InputDecoration(hintText: "Enter reason..."),
+        ),
         actions: [
-          // --- TRIGGER: Click here to open the bottom sheet ---
-          IconButton(
-            icon: const Icon(Icons.person_add, color: Colors.white),
+          TextButton(
             onPressed: () {
-              _showReasonBottomSheet(context);
+              setState(() => students[index]['Reason'] = reasonCtrl.text);
+              Navigator.pop(context);
             },
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                children: [
-                  // --- 1. Top Filters ---
-                  Row(
-                    children: [
-                      Expanded(child: _buildDropdown("10A -English")),
-                      const SizedBox(width: 16),
-                      Expanded(child: _buildDropdown("2025-2026")),
-                    ],
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // --- 2. P / A / H Toggle ---
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(30),
-                      border: Border.all(color: primaryBlue),
-                    ),
-                    child: Row(
-                      children: [
-                        _buildToggleOption("P", "P"),
-                        _buildVerticalDivider(),
-                        _buildToggleOption("A", "A"),
-                        _buildVerticalDivider(),
-                        _buildToggleOption("H", "H"),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // --- 3. Student List ---
-                  ...students.map(
-                    (student) =>
-                        _buildStudentCard(student["name"]!, student["id"]!),
-                  ),
-
-                  // NOTE: "The Reason" section has been removed from here
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // --- Helper Widgets ---
-
-  Widget _buildDropdown(String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: primaryBlue, width: 1),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: text,
-          icon: const Icon(Icons.keyboard_arrow_down),
-          isExpanded: true,
-          items: [text].map((String item) {
-            return DropdownMenuItem<String>(
-              value: item,
-              child: Text(
-                item,
-                style: GoogleFonts.poppins(fontSize: 13, color: Colors.black87),
-              ),
-            );
-          }).toList(),
-          onChanged: (_) {},
-        ),
-      ),
-    );
-  }
-
-  Widget _buildToggleOption(String label, String value) {
-    bool isSelected = selectedStatus == value;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          setState(() {
-            selectedStatus = value;
-          });
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: isSelected ? primaryBlue : Colors.transparent,
-            borderRadius: BorderRadius.circular(30),
-          ),
-          child: Text(
-            label,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.poppins(
-              fontWeight: FontWeight.bold,
-              color: isSelected ? Colors.white : Colors.black87,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildVerticalDivider() {
-    return Container(width: 1, height: 24, color: Colors.grey[300]);
-  }
-
-  Widget _buildStudentCard(String name, String id) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: primaryBlue, width: 1),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 20,
-            backgroundColor: Colors.grey[300],
-            child: Icon(Icons.person, color: Colors.grey[700]),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: GoogleFonts.poppins(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                    color: textDark,
-                  ),
-                ),
-                Text(
-                  id,
-                  style: GoogleFonts.poppins(
-                    fontSize: 12,
-                    color: Colors.grey[500],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: successGreen,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Center(
-              child: Text(
-                selectedStatus,
-                style: GoogleFonts.poppins(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-            ),
+            child: const Text("OK"),
           ),
         ],
       ),
