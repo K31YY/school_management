@@ -267,7 +267,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
             children: [
               Expanded(
                 child: Text(
-                  item['subject']?['SubName'] ?? 'N/A', // ប្រើ SubName តាម DB
+                  item['subject']?['SubName'] ?? 'N/A', // use subject name from API
                   style: GoogleFonts.poppins(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,

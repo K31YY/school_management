@@ -1,5 +1,10 @@
+// ignore_for_file: curly_braces_in_flow_control_structures, avoid_print
+
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AddScoreScreen extends StatefulWidget {
   const AddScoreScreen({super.key});
@@ -9,308 +14,444 @@ class AddScoreScreen extends StatefulWidget {
 }
 
 class _AddScoreScreenState extends State<AddScoreScreen> {
-  // Colors
-  final Color primaryBlue = const Color(0xFF4A5BF6);
-  final Color backgroundGrey = const Color(0xFFF0F0F0);
-  final Color textDark = const Color(0xFF333333);
+  final String baseUrl = "http://10.0.2.2:8000/api";
+  List students = [], subjects = [], years = [];
+  Map<String, dynamic>? existingScore; // for storing existing score data if found
 
-  // --- NEW FUNCTION: Show "New Score" Bottom Sheet ---
-  void _showNewScoreBottomSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true, // Important for handling keyboard
-      backgroundColor: Colors.transparent, // Allows rounded corners to show
-      builder: (context) {
-        return Container(
-          width: double.infinity,
-          padding: EdgeInsets.only(
-            left: 24,
-            right: 24,
-            top: 24,
-            // Adjust bottom padding for keyboard visibility
-            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-          ),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(30),
-              topRight: Radius.circular(30),
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min, // Hug content height
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Text(
-                "New Score",
-                style: GoogleFonts.poppins(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: textDark,
-                ),
-              ),
-              const SizedBox(height: 20),
+  int? selectedStu, selectedSub, selectedYear, selectedSem;
 
-              // Subject Dropdown
-              _buildDropdownInput("Select Subject", isPlaceholder: true),
-              const SizedBox(height: 16),
-
-              // Semester Dropdown
-              _buildDropdownInput("Semester", isPlaceholder: true),
-              const SizedBox(height: 16),
-
-              // Score Inputs Row
-              Row(
-                children: [
-                  Expanded(child: _buildTextInput("Scores")),
-                  const SizedBox(width: 16),
-                  Expanded(child: _buildTextInput("Max Scores")),
-                ],
-              ),
-
-              const SizedBox(height: 24),
-
-              // Save Button
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context); // Close sheet
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryBlue,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: Text(
-                    "Save",
-                    style: GoogleFonts.poppins(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
+  final Map<String, TextEditingController> _ctrls = {
+    'Quiz': TextEditingController(),
+    'Homework': TextEditingController(),
+    'Attendance': TextEditingController(),
+    'Participation': TextEditingController(),
+    'Midterm': TextEditingController(),
+    'Final': TextEditingController(),
+  };
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: backgroundGrey,
-      appBar: AppBar(
-        backgroundColor: primaryBlue,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            Navigator.pop(context);
-          },
+  void initState() {
+    super.initState();
+    _fetchInitialData();
+  }
+
+  // get data for dropdowns (students, subjects, years)
+  Future<void> _fetchInitialData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      String? token = prefs.getString('TOKEN');
+      final headers = {
+        "Accept": "application/json",
+        "Authorization": "Bearer $token",
+      };
+
+      final responses = await Future.wait([
+        http.get(Uri.parse("$baseUrl/students"), headers: headers),
+        http.get(Uri.parse("$baseUrl/subjects"), headers: headers),
+        http.get(Uri.parse("$baseUrl/academic-years"), headers: headers),
+      ]);
+
+      if (responses.every((r) => r.statusCode == 200)) {
+        setState(() {
+          students = json.decode(responses[0].body)['data'];
+          subjects = json.decode(responses[1].body)['data'];
+          years = json.decode(responses[2].body)['data'];
+        });
+      }
+    } catch (e) {
+      EasyLoading.showError("Error loading data");
+    }
+  }
+
+  // function to check if score already exists for selected student, subject, year, semester
+  Future<void> _checkExistingScore() async {
+    if (selectedStu == null || selectedSub == null || selectedSem == null)
+      return;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      String? token = prefs.getString('TOKEN');
+
+      final response = await http.get(
+        Uri.parse(
+          "$baseUrl/studies/check?StuID=$selectedStu&SubID=$selectedSub&Semester=$selectedSem",
         ),
-        title: Text(
-          "Add Score",
-          style: GoogleFonts.poppins(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        centerTitle: true,
-        actions: [
-          // --- TRIGGER: Open Bottom Sheet ---
-          IconButton(
-            icon: const Icon(Icons.person_add_alt_1, color: Colors.white),
-            onPressed: () {
-              _showNewScoreBottomSheet(context);
-            },
-          ),
-        ],
+        headers: {
+          "Accept": "application/json",
+          "Authorization": "Bearer $token",
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final resData = json.decode(response.body);
+        setState(() {
+          existingScore = resData['success'] ? resData['data'] : null;
+        });
+      }
+    } catch (e) {
+      print("Check error: $e");
+    }
+  }
+
+  // show modal bottom sheet for entering/updating scores
+  void _showScoreSheet() {
+    // if score exists, populate text fields for easy editing or updating
+    if (existingScore != null) {
+      _ctrls['Quiz']!.text = existingScore!['Quiz'].toString();
+      _ctrls['Homework']!.text = existingScore!['Homework'].toString();
+      _ctrls['Attendance']!.text = existingScore!['AttendanceScore'].toString();
+      _ctrls['Participation']!.text = existingScore!['Participation']
+          .toString();
+      _ctrls['Midterm']!.text = existingScore!['Midterm'].toString();
+      _ctrls['Final']!.text = existingScore!['Final'].toString();
+    } else {
+      _ctrls.forEach((k, v) => v.clear());
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
       ),
-      body: SingleChildScrollView(
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+          left: 20,
+          right: 20,
+          top: 20,
+        ),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // --- 1. Selection Section ---
-                  _buildLabel("Select Class Section"),
-                  const SizedBox(height: 8),
-                  _buildDropdownInput("10 - A"),
-
-                  const SizedBox(height: 16),
-
-                  _buildLabel("Select Student"),
-                  const SizedBox(height: 8),
-                  _buildDropdownInput("Khoeurt Sokhy"),
-
-                  const SizedBox(height: 24),
-
-                  // --- 2. Existing Scores List ---
-                  Text(
-                    "Scores",
-                    style: GoogleFonts.poppins(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: textDark,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Score Card Example
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black,
-                          blurRadius: 5,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Quiz",
-                              style: GoogleFonts.poppins(
-                                color: Colors.grey[600],
-                                fontSize: 12,
-                              ),
-                            ),
-                            Text(
-                              "English",
-                              style: GoogleFonts.poppins(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                color: textDark,
-                              ),
-                            ),
-                          ],
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[300],
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            "9/10 Point",
-                            style: GoogleFonts.poppins(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: textDark,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+            Text(
+              existingScore != null ? "Update Score" : "Add New Score",
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 20),
+            _buildScoreGrid(),
+            const SizedBox(height: 25),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: existingScore != null
+                      ? Colors.blue
+                      : const Color(0xFF4A5BF6),
+                ),
+                onPressed: () {
+                  Navigator.pop(context);
+                  if (existingScore != null) {
+                    _handleUpdate(); // if score exists, call update function instead of save
+                  } else {
+                    _handleSave(); // if no score exists, call save function
+                  }
+                },
+                child: Text(
+                  existingScore != null ? "UPDATE" : "SAVE",
+                  style: const TextStyle(color: Colors.white),
+                ),
               ),
             ),
-
-            // NOTE: The "New Score" section was removed from here
-            // and moved to _showNewScoreBottomSheet
+            const SizedBox(height: 20),
           ],
         ),
       ),
     );
   }
 
-  // --- Helper Widgets ---
+  // function to save new score to database (POST request)
+  Future<void> _handleSave() async {
+    EasyLoading.show(status: 'Saving...');
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      String? token = prefs.getString('TOKEN');
 
-  Widget _buildLabel(String text) {
-    return Text(
-      text,
-      style: GoogleFonts.poppins(
-        fontSize: 14,
-        fontWeight: FontWeight.bold,
-        color: Colors.grey[700],
+      final body = {
+        "StuID": selectedStu,
+        "SubID": selectedSub,
+        "YearID": selectedYear,
+        "Semester": selectedSem,
+        "Quiz": double.tryParse(_ctrls['Quiz']!.text) ?? 0,
+        "Homework": double.tryParse(_ctrls['Homework']!.text) ?? 0,
+        "AttendanceScore": double.tryParse(_ctrls['Attendance']!.text) ?? 0,
+        "Participation": double.tryParse(_ctrls['Participation']!.text) ?? 0,
+        "Midterm": double.tryParse(_ctrls['Midterm']!.text) ?? 0,
+        "Final": double.tryParse(_ctrls['Final']!.text) ?? 0,
+      };
+
+      final res = await http.post(
+        Uri.parse("$baseUrl/studies"),
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "Authorization": "Bearer $token",
+        },
+        body: jsonEncode(body),
+      );
+
+      if (res.statusCode == 201) {
+        EasyLoading.showSuccess("រក្សាទុកបានជោគជ័យ!");
+        _checkExistingScore();
+      } else if (res.statusCode == 409) {
+        // show error message from backend
+        final msg = json.decode(res.body)['message'];
+        EasyLoading.showError(msg);
+      } else {
+        EasyLoading.showError("បរាជ័យ៖ ${res.statusCode}");
+      }
+    } catch (e) {
+      EasyLoading.showError("Error: $e");
+    }
+  }
+
+  // function to update existing score in database (PUT request)
+  Future<void> _handleUpdate() async {
+    EasyLoading.show(status: 'Updating...');
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      String? token = prefs.getString('TOKEN');
+      int studyId = existingScore!['StudyID']; // get id of existing score record to update
+
+      final res = await http.put(
+        Uri.parse("$baseUrl/studies/$studyId"),
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "Authorization": "Bearer $token",
+        },
+        body: jsonEncode({
+          "Quiz": double.tryParse(_ctrls['Quiz']!.text) ?? 0,
+          "Homework": double.tryParse(_ctrls['Homework']!.text) ?? 0,
+          "AttendanceScore": double.tryParse(_ctrls['Attendance']!.text) ?? 0,
+          "Participation": double.tryParse(_ctrls['Participation']!.text) ?? 0,
+          "Midterm": double.tryParse(_ctrls['Midterm']!.text) ?? 0,
+          "Final": double.tryParse(_ctrls['Final']!.text) ?? 0,
+        }),
+      );
+
+      if (res.statusCode == 200) {
+        EasyLoading.showSuccess("Update successful!");
+        _checkExistingScore();
+      }
+    } catch (e) {
+      EasyLoading.showError("Update Error: $e");
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.grey[100],
+      appBar: AppBar(
+        title: const Text("Add Score"),
+        backgroundColor: const Color(0xFF4A5BF6),
+        centerTitle: true,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            _buildMainDropdown(
+              "Select Student",
+              students,
+              selectedStu,
+              "StuID",
+              "StuNameEN",
+              (v) {
+                setState(() => selectedStu = v);
+                _checkExistingScore();
+              },
+            ),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildMainDropdown(
+                    "Year",
+                    years,
+                    selectedYear,
+                    "YearID",
+                    "YearName",
+                    (v) => setState(() => selectedYear = v),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(child: _buildSemesterDropdown()),
+              ],
+            ),
+            _buildMainDropdown(
+              "Select Subject",
+              subjects,
+              selectedSub,
+              "SubID",
+              "SubName",
+              (v) {
+                setState(() => selectedSub = v);
+                _checkExistingScore();
+              },
+            ),
+            const SizedBox(height: 20),
+
+            // bottom modal
+            _buildScoreEntryButton(),
+
+            const SizedBox(height: 30),
+            if (existingScore != null) _buildExistingScoreCard(),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildDropdownInput(String text, {bool isPlaceholder = false}) {
+  // --- UI Helpers ---
+  Widget _buildScoreEntryButton() {
+    return InkWell(
+      onTap: _showScoreSheet,
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: Colors.blue.shade200),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              existingScore != null
+                  ? "View/Edit Current Scores"
+                  : "Click to Enter Scores",
+              style: TextStyle(
+                color: existingScore != null ? Colors.blue : Colors.blue,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Icon(
+              existingScore != null ? Icons.edit : Icons.add_chart,
+              color: existingScore != null ? Colors.blue : Colors.blue,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExistingScoreCard() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.green.shade50,
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: Colors.green),
+      ),
+      child: Column(
+        children: [
+          const Text(
+            "SCORE RECORDED",
+            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green),
+          ),
+          const Divider(),
+          Text(
+            "Total: ${existingScore!['TotalScore']}",
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+          Text(
+            "Quiz: ${existingScore!['Quiz']} | Mid: ${existingScore!['Midterm']} | Final: ${existingScore!['Final']}",
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMainDropdown(
+    String hint,
+    List items,
+    dynamic val,
+    String idKey,
+    String nameKey,
+    Function(dynamic) onChange,
+  ) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(
-          color: isPlaceholder ? Colors.black54 : primaryBlue,
-          width: 1,
-        ),
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300),
       ),
       child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: isPlaceholder ? null : text,
-          hint: isPlaceholder
-              ? Text(
-                  text,
-                  style: GoogleFonts.poppins(
-                    color: Colors.black87,
-                    fontWeight: FontWeight.w500,
-                  ),
-                )
-              : null,
-          icon: const Icon(Icons.keyboard_arrow_down, color: Colors.black),
+        child: DropdownButton<int>(
           isExpanded: true,
-          items: isPlaceholder
-              ? []
-              : [text].map((String item) {
-                  return DropdownMenuItem<String>(
-                    value: item,
-                    child: Text(
-                      item,
-                      style: GoogleFonts.poppins(color: Colors.black87),
-                    ),
-                  );
-                }).toList(),
-          onChanged: (_) {},
+          hint: Text(hint),
+          value: val,
+          items: items
+              .map(
+                (i) => DropdownMenuItem<int>(
+                  value: i[idKey],
+                  child: Text(i[nameKey].toString()),
+                ),
+              )
+              .toList(),
+          onChanged: onChange,
         ),
       ),
     );
   }
 
-  Widget _buildTextInput(String hint) {
+  Widget _buildSemesterDropdown() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: Colors.black54, width: 1),
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300),
       ),
-      child: TextField(
-        textAlign: TextAlign.center,
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: GoogleFonts.poppins(
-            color: Colors.black87,
-            fontWeight: FontWeight.w500,
-            fontSize: 14,
-          ),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(vertical: 14),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<int>(
+          isExpanded: true,
+          hint: const Text("Semester"),
+          value: selectedSem,
+          items: [1, 2]
+              .map(
+                (s) =>
+                    DropdownMenuItem<int>(value: s, child: Text("Semester $s")),
+              )
+              .toList(),
+          onChanged: (v) {
+            setState(() => selectedSem = v);
+            _checkExistingScore();
+          },
         ),
       ),
+    );
+  }
+
+  Widget _buildScoreGrid() {
+    return GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      childAspectRatio: 2.2,
+      crossAxisSpacing: 10,
+      mainAxisSpacing: 12,
+      children: _ctrls.entries
+          .map(
+            (e) => TextField(
+              controller: e.value,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: e.key,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                contentPadding: const EdgeInsets.all(10),
+              ),
+            ),
+          )
+          .toList(),
     );
   }
 }
