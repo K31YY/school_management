@@ -78,7 +78,6 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
           _isLoading = false;
         });
       }
-      
     } catch (e) {
       debugPrint("Dashboard Error: $e");
       if (mounted) setState(() => _isLoading = false);
@@ -95,25 +94,118 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
   Future<void> _handleLogout() async {
     final bool? confirm = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          "Logout",
-          style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            shape: BoxShape.rectangle,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: const [
+              BoxShadow(
+                color: Colors.black26,
+                blurRadius: 10.0,
+                offset: Offset(0.0, 10.0),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min, // To make the card compact
+            children: [
+              // 1. Icon Section
+              Container(
+                padding: const EdgeInsets.all(15),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.logout_rounded,
+                  color: Colors.red,
+                  size: 40,
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // 2. Title
+              Text(
+                "Confirm Logout",
+                style: GoogleFonts.poppins(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blueGrey.shade900,
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              // 3. Content
+              Text(
+                "Are you sure you want to log out? You will need to login again to access your schedule.",
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+              const SizedBox(height: 25),
+
+              // 4. Action Buttons
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        side: BorderSide(color: Colors.grey.shade300),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: Text(
+                        "Cancel",
+                        style: GoogleFonts.poppins(
+                          color: Colors.blueGrey.shade700,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: Text(
+                        "Logout",
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
-        content: const Text("Do you really want to logout?"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text("No"),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text("Yes", style: TextStyle(color: Colors.red)),
-          ),
-        ],
       ),
     );
 
+    if (confirm == true) {
+      // Perform your logout logic here (clear prefs, navigate to login)
+    }
     if (confirm == true) {
       final sp = await SharedPreferences.getInstance();
       await sp.clear();
@@ -125,7 +217,6 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
       );
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -348,7 +439,7 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
           ),
           _drawerTile(
             Icons.groups,
-            "Manage Students",
+            "View Students",
             () => _navigateTo(const ViewsStudent()),
           ),
           _drawerTile(
