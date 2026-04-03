@@ -66,7 +66,7 @@ class _AddAttendanceScreenState extends State<AddAttendanceScreen> {
   // function to submit attendance data to backend (POST request)
   Future<void> _submitAttendance() async {
     if (selectedDetailID == null) {
-      EasyLoading.showInfo("សូមជ្រើសរើសម៉ោងសិក្សា!");
+      EasyLoading.showInfo("Please select a class/time!");
       return;
     }
 

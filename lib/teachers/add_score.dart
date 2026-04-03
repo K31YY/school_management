@@ -192,14 +192,14 @@ class _AddScoreScreenState extends State<AddScoreScreen> {
       );
 
       if (res.statusCode == 201) {
-        EasyLoading.showSuccess("រក្សាទុកបានជោគជ័យ!");
+        EasyLoading.showSuccess("Save successful!");
         _checkExistingScore();
       } else if (res.statusCode == 409) {
         // show error message from backend
         final msg = json.decode(res.body)['message'];
         EasyLoading.showError(msg);
       } else {
-        EasyLoading.showError("បរាជ័យ៖ ${res.statusCode}");
+        EasyLoading.showError("Failed ${res.statusCode}");
       }
     } catch (e) {
       EasyLoading.showError("Error: $e");
