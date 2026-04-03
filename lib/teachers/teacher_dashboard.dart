@@ -143,7 +143,7 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
 
               // 3. Content
               Text(
-                "Are you sure you want to log out? You will need to login again to access your schedule.",
+                "Are you sure you want to log out?",
                 textAlign: TextAlign.center,
                 style: GoogleFonts.poppins(
                   fontSize: 14,
